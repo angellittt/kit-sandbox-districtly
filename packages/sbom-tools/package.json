@@ -1,0 +1,8 @@
+{
+  "name": "@repo/sbom-tools",
+  "private": true,
+  "description": "Pins the SBOM CLIs so pnpm-lock.yaml locks their whole dependency tree. Kept out of the app images: no app depends on it, so turbo prune drops it.",
+  "devDependencies": {
+    "@cyclonedx/cdxgen": "12.8.4"
+  }
+}

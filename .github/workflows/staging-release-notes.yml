@@ -1,0 +1,260 @@
+name: QA and Staging Release Notes
+
+on:
+  push:
+    branches: [qa, staging]
+  workflow_dispatch:
+    inputs:
+      prev_merge_override:
+        description: "SHA of previous merge commit to use as range boundary (leave blank for auto-detect)"
+        required: false
+        default: ""
+
+concurrency:
+  group: release-notes-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+env:
+  ANTHROPIC_MODEL: claude-sonnet-4-6
+  RELEASE_CHANNEL: ${{ github.ref_name }}
+
+jobs:
+  release-notes:
+    name: Generate Release Notes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate release channel
+        run: |
+          case "$RELEASE_CHANNEL" in
+            qa|staging) ;;
+            *)
+              echo "::error::Run this workflow from the qa or staging branch, got: '${RELEASE_CHANNEL}'."
+              exit 1
+              ;;
+          esac
+
+      - name: Verify ANTHROPIC_API_KEY
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set. Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Collect context
+        id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREV_MERGE_OVERRIDE: ${{ inputs.prev_merge_override }}
+          # Branch tip before this push: the exact previous deploy boundary.
+          BEFORE_SHA: ${{ github.event.before }}
+        run: bash scripts/release-notes/collect-context.sh
+
+      - name: Check idempotency
+        id: guard
+        env:
+          NEW_HASH: ${{ steps.ctx.outputs.context_hash }}
+        run: |
+          git fetch origin "+refs/heads/${RELEASE_CHANNEL}:refs/remotes/origin/${RELEASE_CHANNEL}"
+
+          matching_hash_file=""
+          while IFS= read -r hash_file; do
+            [ -z "$hash_file" ] && continue
+            if [ "$(git show "origin/${RELEASE_CHANNEL}:${hash_file}")" = "$NEW_HASH" ]; then
+              matching_hash_file="$hash_file"
+              break
+            fi
+          done < <(
+            git ls-tree -r --name-only "origin/${RELEASE_CHANNEL}" -- "release-notes/${RELEASE_CHANNEL}" |
+              grep '/\.context-hash$' || true
+          )
+
+          if [ -n "$matching_hash_file" ]; then
+            echo "Context already published at ${matching_hash_file}; skipping regeneration."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Context changed — regenerating notes."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build system prompts
+        id: prep
+        if: steps.guard.outputs.changed == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/prompts"
+
+          cat > "$RUNNER_TEMP/prompts/qa-system.txt" <<'PROMPT'
+          You are writing release notes for the QA team of this project.
+          The user context identifies the deployment environment. Preserve that environment name in the title.
+          This is a monorepo with two apps: apps/web (React frontend) and apps/api (backend API).
+          The user message contains merged Pull Requests (titles, numbers, bodies, authors) or a git commit log.
+          Output ONLY GitHub-flavored Markdown. Do not wrap in code fences. No commentary or preamble.
+
+          Structure your output in this exact order (omit any section that would be empty):
+          - First line: "# {ENVIRONMENT} Release Notes — {DATE}". Use "QA" or "Staging" exactly as named in the context.
+          - "## Frontend Changes" — UI, pages, components, flows from apps/web. For each item describe what to test in the browser.
+          - "## Backend Changes & Frontend Impact" — API, database, infrastructure changes from apps/api. For each item explain what frontend behaviour it enables or affects, so QA knows what to exercise in the UI.
+          - "## Breaking Changes / Migration Notes" — env var changes, migration steps, deployment notes. Flag anything that must be done before testing.
+          - "## Internal / Chore" — CI, refactors, dependency bumps. One line each, no test action needed.
+
+          Rules:
+          - One bullet per meaningful change. Reference PR numbers as "(#NNN)".
+          - Infer frontend vs backend from PR titles, descriptions, and keywords (component, page, screen, endpoint, migration, schema, query, etc.).
+          - Skip: merge commits, lockfile-only changes, version bumps.
+          PROMPT
+
+          cat > "$RUNNER_TEMP/prompts/client-system.txt" <<'PROMPT'
+          You are writing deployment update notes for a non-technical client (product owner / stakeholder) of this project.
+          The user context identifies the deployment environment. Preserve that environment name in the title.
+          This is a monorepo with a React frontend (apps/web) and a backend API (apps/api).
+          The user message contains merged Pull Requests or a git commit log.
+          Output ONLY plain, friendly Markdown. Do not wrap in code fences. No commentary or questions.
+
+          Rules:
+          - Focus ONLY on frontend changes — things the user can see and interact with in the browser.
+          - If a backend change directly enables a new user-visible feature, describe what the user can now do (not how the backend works).
+          - Ignore backend-only changes entirely: API refactors, database migrations, query optimisations, CI fixes, and dependency bumps are invisible to the client — do not mention them.
+          - NO PR numbers, NO technical jargon, NO ticket IDs, NO author names, NO internal terms like "endpoint", "schema", "migration", "refactor".
+          - First line: "# What's New in {ENVIRONMENT} — {DATE}". Use "QA" or "Staging" exactly as named in the context.
+          - 3 to 5 short bullets describing user-visible improvements and new features. One optional intro sentence.
+          - If there are no user-facing frontend changes, output a single line: "Internal improvements and bug fixes — no user-facing changes in this update."
+          - Keep the whole thing under 600 characters.
+          PROMPT
+
+          echo "qa_system=$RUNNER_TEMP/prompts/qa-system.txt" >> "$GITHUB_OUTPUT"
+          echo "client_system=$RUNNER_TEMP/prompts/client-system.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Generate QA notes
+        if: steps.guard.outputs.changed == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MAX_TOKENS: "3000"
+          DATE_SLUG: ${{ steps.ctx.outputs.date_slug }}
+        run: |
+          bash scripts/release-notes/anthropic-generate.sh \
+            "${{ steps.prep.outputs.qa_system }}" \
+            "${{ steps.ctx.outputs.context_file }}" \
+            "release-notes/${RELEASE_CHANNEL}/${DATE_SLUG}/qa.md"
+
+      - name: Generate client notes
+        if: steps.guard.outputs.changed == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MAX_TOKENS: "800"
+          DATE_SLUG: ${{ steps.ctx.outputs.date_slug }}
+        run: |
+          bash scripts/release-notes/anthropic-generate.sh \
+            "${{ steps.prep.outputs.client_system }}" \
+            "${{ steps.ctx.outputs.context_file }}" \
+            "release-notes/${RELEASE_CHANNEL}/${DATE_SLUG}/client.md"
+
+      - name: Update index
+        if: steps.guard.outputs.changed == 'true'
+        env:
+          DATE_SLUG: ${{ steps.ctx.outputs.date_slug }}
+        run: bash scripts/release-notes/update-index.sh "$DATE_SLUG"
+
+      - name: Commit notes back
+        id: publish
+        if: steps.guard.outputs.changed == 'true'
+        env:
+          DATE_SLUG: ${{ steps.ctx.outputs.date_slug }}
+          CONTEXT_HASH: ${{ steps.ctx.outputs.context_hash }}
+        run: |
+          NOTES_ROOT="release-notes/${RELEASE_CHANNEL}"
+          printf '%s\n' "$CONTEXT_HASH" > "${NOTES_ROOT}/${DATE_SLUG}/.context-hash"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${NOTES_ROOT}/"
+          if git diff --cached --quiet; then
+            echo "No changes to commit — skipping."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "docs(release-notes): ${RELEASE_CHANNEL} notes for ${DATE_SLUG} [skip ci]"
+
+          # Another commit may land on the branch while this job runs (the concurrency
+          # group only serializes this workflow, not developer/CI pushes). Rebase
+          # onto the latest remote tip and retry so the push can't be rejected as a
+          # non-fast-forward, which would discard the freshly generated notes.
+          for attempt in 1 2 3 4 5; do
+            git rebase --abort 2>/dev/null || true
+            git fetch origin "+refs/heads/${RELEASE_CHANNEL}:refs/remotes/origin/${RELEASE_CHANNEL}"
+            if ! git rebase -X theirs "origin/${RELEASE_CHANNEL}"; then
+              echo "::warning::Rebase failed on attempt ${attempt}; aborting it before retrying."
+              git rebase --abort 2>/dev/null || true
+              continue
+            fi
+            if git push origin "HEAD:${RELEASE_CHANNEL}"; then
+              echo "Pushed release notes on attempt ${attempt}."
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Push rejected on attempt ${attempt}; remote ${RELEASE_CHANNEL} changed again."
+          done
+
+          git rebase --abort 2>/dev/null || true
+          echo "::error::Failed to push release notes after multiple rebase attempts."
+          exit 1
+
+      - name: Post to Slack
+        if: steps.publish.outputs.published == 'true'
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DATE_SLUG: ${{ steps.ctx.outputs.date_slug }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "SLACK_WEBHOOK_URL secret is not set — skipping Slack notification. Add it under Settings -> Secrets and variables -> Actions to enable this step."
+            exit 0
+          fi
+
+          QA_FILE="release-notes/${RELEASE_CHANNEL}/${DATE_SLUG}/qa.md"
+          CLIENT_FILE="release-notes/${RELEASE_CHANNEL}/${DATE_SLUG}/client.md"
+
+          case "$RELEASE_CHANNEL" in
+            qa) RELEASE_LABEL="QA" ;;
+            staging) RELEASE_LABEL="Staging" ;;
+          esac
+
+          has_release_content() {
+            [ -s "$1" ] && awk 'NF && $0 !~ /^#/ { found=1 } END { exit found ? 0 : 1 }' "$1"
+          }
+
+          if ! has_release_content "$QA_FILE" || ! has_release_content "$CLIENT_FILE"; then
+            echo "::warning::Generated notes are empty or contain headings only; skipping Slack notification."
+            exit 0
+          fi
+
+          EXCERPT="$(grep -m1 '^- ' "$CLIENT_FILE" || true)"
+          if [ -z "$EXCERPT" ]; then
+            EXCERPT="$(awk 'NF && $0 !~ /^#/ { print; exit }' "$CLIENT_FILE")"
+          fi
+
+          QA_URL="https://github.com/${REPO}/blob/${RELEASE_CHANNEL}/release-notes/${RELEASE_CHANNEL}/${DATE_SLUG}/qa.md"
+          CLIENT_URL="https://github.com/${REPO}/blob/${RELEASE_CHANNEL}/release-notes/${RELEASE_CHANNEL}/${DATE_SLUG}/client.md"
+          PAYLOAD="$(jq -n \
+            --arg excerpt "$EXCERPT" \
+            --arg qa_url "$QA_URL" \
+            --arg client_url "$CLIENT_URL" \
+            --arg date "$DATE_SLUG" \
+            --arg environment "$RELEASE_LABEL" \
+            '{
+              text: (":rocket: *" + $environment + " updated — " + $date + "*\n>" + $excerpt + "\n\n:clipboard: <" + $qa_url + "|QA Notes>  |  :memo: <" + $client_url + "|Client Notes>")
+            }')"
+          curl -fsSL -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_WEBHOOK_URL"

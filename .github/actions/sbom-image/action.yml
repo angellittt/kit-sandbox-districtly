@@ -1,0 +1,111 @@
+name: SBOM from container image
+description: >
+  Generates a CycloneDX 1.6 SBOM for a container image with Syft (npm deps
+  plus the OS packages of the base image) and uploads it as a workflow
+  artifact. Optionally attaches it to the image in its registry as an OCI
+  referrer with oras, so the SBOM lives next to the image. Self-contained: no
+  repo-specific paths, so it can move to a shared actions repo as is.
+
+inputs:
+  image:
+    description: >
+      Image to scan, e.g. myacr.azurecr.io/api:<sha>. Read from the local
+      Docker daemon when present, otherwise pulled from the registry.
+    required: true
+  name:
+    description: SBOM name. Used for the file (<name>.cdx.json) and the artifact (sbom-<name>).
+    required: true
+  output-dir:
+    description: Folder to write the SBOM to.
+    required: false
+    default: sbom
+  syft-version:
+    description: Syft version to run.
+    required: false
+    default: v1.52.0
+  upload:
+    description: Upload the SBOM as a workflow artifact.
+    required: false
+    default: "true"
+  retention-days:
+    description: Artifact retention in days. Empty uses the repo default.
+    required: false
+    default: ""
+  attach-to-registry:
+    description: >
+      Attach the SBOM to the image in its registry as an OCI referrer (oras
+      attach). The image must already be pushed, and the runner must be logged
+      in to the registry (docker login / az acr login).
+    required: false
+    default: "false"
+  oras-version:
+    description: oras version for attach-to-registry.
+    required: false
+    default: 1.3.4
+
+outputs:
+  sbom-file:
+    description: Path to the generated SBOM.
+    value: ${{ steps.generate.outputs.sbom-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Syft
+      id: syft
+      uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      with:
+        syft-version: ${{ inputs.syft-version }}
+
+    - name: Generate SBOM
+      id: generate
+      shell: bash
+      env:
+        SYFT: ${{ steps.syft.outputs.cmd }}
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_NAME: ${{ inputs.name }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        mkdir -p "$INPUT_OUTPUT_DIR"
+        file="$(cd "$INPUT_OUTPUT_DIR" && pwd)/$INPUT_NAME.cdx.json"
+        "$SYFT" scan "$INPUT_IMAGE" --output "cyclonedx-json@1.6=$file"
+        echo "sbom-file=$file" >> "$GITHUB_OUTPUT"
+        count="$(jq '.components | length' "$file")"
+        {
+          echo "### SBOM: $INPUT_NAME"
+          echo "CycloneDX 1.6 for \`$INPUT_IMAGE\`, $count components, commit \`$GITHUB_SHA\`."
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload SBOM
+      if: inputs.upload == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: sbom-${{ inputs.name }}
+        path: ${{ steps.generate.outputs.sbom-file }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: error
+
+    - name: Install oras
+      if: inputs.attach-to-registry == 'true'
+      uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+      with:
+        version: ${{ inputs.oras-version }}
+
+    - name: Attach SBOM to the image
+      if: inputs.attach-to-registry == 'true'
+      shell: bash
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        SBOM_FILE: ${{ steps.generate.outputs.sbom-file }}
+      run: |
+        # Attach by digest so the SBOM stays with this exact image, even after
+        # the tag moves.
+        digest="$(oras resolve "$INPUT_IMAGE")"
+        # Drop an @digest, then a :tag only when the colon comes after the last
+        # slash, so a registry port (host:5000/api) stays in the repo name.
+        repo="${INPUT_IMAGE%@*}"
+        case "${repo##*/}" in *:*) repo="${repo%:*}" ;; esac
+        cd "$(dirname "$SBOM_FILE")"
+        oras attach --artifact-type application/vnd.cyclonedx+json \
+          "$repo@$digest" "$(basename "$SBOM_FILE"):application/vnd.cyclonedx+json"
+        echo "Attached to \`$repo@$digest\` as an OCI referrer." >> "$GITHUB_STEP_SUMMARY"

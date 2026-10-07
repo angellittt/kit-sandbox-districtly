@@ -1,0 +1,51 @@
+services:
+  web:
+    container_name: web
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      target: production
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - ttt_network
+  api:
+    container_name: api
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+      target: production
+    restart: always
+    ports:
+      - 8080:8000
+    networks:
+      - ttt_network
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "http://0.0.0.0:8000/api/v1/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  # ----------------------
+  #
+  # Uncomment and configure if your application requires a database
+  # We are using PostgreSQL as an example, but you can replace it with any other database service you need
+  #
+  # db:
+  #     image: postgres:18
+  #     container_name: postgres
+  #     ports:
+  #       - 5432:5432
+  #     shm_size: 128mb
+  #     env_file:
+  #       - .env # Make sure to define POSTGRES_PASSWORD, POSTGRES_USER, and POSTGRES_DB in your .env file
+  #     volumes:
+  #       - ./volumes/postgresql:/var/lib/postgresql
+  #     networks:
+  #       - ttt_network
+  # ----------------------
+networks:
+  ttt_network:

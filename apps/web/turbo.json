@@ -1,0 +1,8 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "env": ["NODE_ENV", "VITE_API_BASE_URL"]
+    }
+  }
+}

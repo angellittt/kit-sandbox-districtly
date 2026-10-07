@@ -1,0 +1,109 @@
+# Git hooks, managed by Lefthook (https://lefthook.dev).
+# `pnpm install` installs them (see the "prepare" script in package.json).
+#
+# Rule: if CI would fail, the commit (or push) fails first.
+# Every job calls the same pnpm script / turbo task CI calls, so there is
+# one source of truth for each check. `pnpm check:hook-parity` fails if this
+# file and the PR workflows stop running the same checks. `--affected` limits
+# turbo to the packages changed since HEAD (staged or not) plus their
+# dependents, and turbo's cache skips anything already checked.
+#
+# Every job runs through `mise x --`, so it uses the tool versions pinned in
+# mise.toml even when git runs without your shell profile (GUI git clients).
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: true
+  jobs:
+    # Formats staged files and re-stages them, like lint-staged used to.
+    # No glob: CI runs `prettier . --check` on every file type Prettier knows,
+    # and `--ignore-unknown` plus .prettierignore skip the rest.
+    - name: format
+      run: mise x -- pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+    # One turbo run for lint + typecheck + unit tests, so turbo runs them in
+    # parallel and builds shared packages once. Separate lefthook jobs would
+    # start three turbo processes that race to rebuild the same dist folders.
+    - name: lint, typecheck, test
+      run: mise x -- pnpm verify --affected --output-logs=errors-only
+      env:
+        TURBO_SCM_BASE: HEAD
+
+    # Root-level files (e2e/, playwright.config.ts) don't belong to any
+    # workspace package, so turbo's lint task never sees them. The globs match
+    # what `pnpm lint:root` lints, plus the shared configs the root
+    # eslint.config.ts and .oxlintrc.json pull in, so a rule change there
+    # re-lints the root too.
+    - name: lint root files
+      glob:
+        - "*.{ts,tsx,js,jsx}"
+        - "e2e/**/*.{ts,tsx,js,jsx}"
+        - "packages/eslint-config/src/eslint.base.config.ts"
+        - "packages/eslint-config/src/oxlint.ts"
+        - ".oxlintrc.json"
+        - "packages/oxlint-config/base.json"
+      run: mise x -- pnpm lint:root
+
+    - name: terraform
+      glob: "infra/**/*.tf"
+      group:
+        piped: true
+        jobs:
+          - name: terraform fmt
+            run: mise x -- pnpm terraform:fmt
+          - name: terraform validate
+            run: mise x -- pnpm terraform:validate
+
+    # The files check-tool-versions.sh reads, plus the check and its tests.
+    - name: tool versions
+      glob:
+        - "mise.toml"
+        - "package.json"
+        - "**/Dockerfile*"
+        - "docker-compose*.yml"
+        - ".github/workflows/**"
+        - "scripts/tool-versions/**"
+      group:
+        piped: true
+        jobs:
+          - name: check tool versions
+            run: mise x -- pnpm check:tool-versions
+          - name: test tool versions
+            run: mise x -- pnpm test:tool-versions
+
+    # Same tests sbom-source.yml runs on every PR.
+    - name: sbom action tests
+      glob: ".github/actions/sbom-*/**"
+      run: mise x -- pnpm test:sbom
+
+    - name: hook parity
+      glob:
+        - "lefthook.yml"
+        - "package.json"
+        - ".github/workflows/**"
+        - ".github/actions/**"
+        - "scripts/hook-parity/**"
+      group:
+        piped: true
+        jobs:
+          - name: check hook parity
+            run: mise x -- pnpm check:hook-parity
+          - name: test hook parity
+            run: mise x -- pnpm test:hook-parity
+
+pre-push:
+  jobs:
+    # Same script e2e.yml runs. Needs Docker running. Both Dockerfiles copy
+    # the whole repo, so almost any file can change what E2E runs. Instead of
+    # listing the files that matter (a list that goes stale), this skips only
+    # pushes that touch nothing but docs, infra or CI config.
+    - name: e2e
+      exclude:
+        - "**/*.md"
+        - "docs/**"
+        - "infra/**"
+        - ".github/**"
+      files: git diff --name-only @{push}..HEAD 2>/dev/null || git diff --name-only origin/main...HEAD
+      run: mise x -- ./scripts/e2e-ci.sh
+      fail_text: "E2E tests failed. Fix them before pushing (Docker must be running)."

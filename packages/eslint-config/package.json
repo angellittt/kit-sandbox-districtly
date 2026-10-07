@@ -1,0 +1,40 @@
+{
+  "name": "@repo/eslint-config",
+  "version": "1.0.0",
+  "description": "",
+  "exports": {
+    "./eslint.base.config": "./src/eslint.base.config.ts",
+    "./eslint.react.config": "./src/eslint.react.config.ts",
+    "./oxlint": "./src/oxlint.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.3.5",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-config-turbo": "^2.8.14",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import-x": "^4.16.1",
+    "eslint-plugin-oxlint": "^1.85.0",
+    "eslint-plugin-prefer-arrow-functions": "^3.9.1",
+    "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-security": "^4.0.0",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.56.1"
+  },
+  "devDependencies": {
+    "jiti": "^2.6.1",
+    "typescript": "^5.9.3"
+  }
+}

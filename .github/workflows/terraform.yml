@@ -1,0 +1,40 @@
+name: Terraform
+
+# CI twin of the terraform jobs in lefthook.yml's pre-commit hook. Checks
+# formatting and validates the config offline (`init -backend=false`), so it
+# needs no Azure credentials and never touches real state.
+#
+# No `paths:` filter on purpose: a path-filtered workflow never reports on
+# PRs that don't match, which leaves a required check stuck on "pending".
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: terraform-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Nothing after checkout needs git auth, so keep the token off disk
+          # where install scripts or downloaded tools could read it.
+          persist-credentials: false
+
+      # Installs Node, pnpm and Terraform at the versions pinned in mise.toml.
+      # Preloop (also in mise.toml) is for running workflows locally, not in CI.
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        env:
+          MISE_DISABLE_TOOLS: github:preloopdev/preloop
+
+      - name: Check formatting
+        run: pnpm terraform:fmt
+
+      - name: Validate
+        run: pnpm terraform:validate

@@ -1,0 +1,243 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit reviews every pull request into main before a human does.
+# The idea: stay quiet about anything CI already checks (formatting, lint, types, tests) and only comment on
+# what a human reviewer would otherwise have to catch: security problems, workflow permissions, weakened tests
+# and loosened tooling rules. See "Pull request reviews" in Readme.md for the flow and how to adjust this file.
+language: en-US
+early_access: false
+tone_instructions: >-
+  Short and direct. Name the file and line, say what is wrong and why, suggest the fix, then stop. No praise,
+  no restating what the change does, no style or formatting comments.
+
+reviews:
+  profile: chill # CI owns style; a comment is for what CI can't see
+  request_changes_workflow: true # findings block the PR until they are resolved
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  collapse_walkthrough: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  assess_linked_issues: false # tickets live in ClickUp, not GitHub issues
+  related_issues: false
+  related_prs: true
+  suggested_labels: false
+  auto_apply_labels: false
+  suggested_reviewers: false # CODEOWNERS decides reviewers
+  poem: false
+  in_progress_fortune: false
+  enable_prompt_for_ai_agents: true # each finding carries a prompt an AI agent can act on
+  abort_on_close: true
+  review_status: true
+  commit_status: true
+  fail_commit_status: false # a CodeRabbit error is not a red check; CI owns the checks
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+    auto_pause_after_reviewed_commits: 0 # never pause, every push gets reviewed
+
+  # Not reviewed: lockfiles, build output, generated code, snapshots, images and reports.
+  path_filters:
+    - "!pnpm-lock.yaml"
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/coverage/**"
+    - "!**/.turbo/**"
+    - "!**/generated/**"
+    - "!**/__snapshots__/**"
+    - "!**/*.snap"
+    - "!**/*-snapshots/**"
+    - "!**/*.{png,jpg,jpeg,gif,webp,ico,svg}"
+    - "!playwright-report/**"
+    - "!test-results/**"
+    - "!release-notes/**" # written by staging-release-notes.yml
+    - "!**/CHANGELOG.md"
+    - "!**/*.lock.hcl"
+
+  path_instructions:
+    - path: ".github/{workflows,actions}/**"
+      instructions: |
+        Every third-party `uses:` is pinned to a full commit SHA with a `# vX.Y.Z` comment. Each workflow and
+        job takes the least `permissions:` it needs; flag `contents: write`, `id-token: write` or other write
+        scopes on a job that doesn't need them. Pass `${{ }}` expressions through `env:`, never inline in
+        `run:`. No `pull_request_target`. Flag any step that skips git hooks (`--no-verify`, `LEFTHOOK=0`).
+        Flag anything that deploys to or changes a production or staging environment.
+    - path: "{**/__tests__/**,**/tests/**,e2e/**,**/*.{test,spec}.{ts,tsx,mjs},**/*.test.sh}"
+      instructions: |
+        Tests check behaviour, not implementation. Test names say what a user or caller relies on. No
+        snapshot as the only assertion, no tautologies, no mock that only records a call. Flag `.skip`,
+        `.only`, `.fixme`, deleted assertions and loosened expectations unless the PR says why.
+    - path: "{lefthook.yml,mise.toml,turbo.json,.coderabbit.yaml,.prettierrc,.prettierignore,**/eslint.config.ts,**/.oxlintrc.json,packages/eslint-config/**,packages/oxlint-config/**,**/tsconfig*.json,**/vitest.config.ts,pnpm-workspace.yaml,.npmrc,.claude/settings.json,.claude/hooks/**,packages/claude-hooks/**,scripts/ci-local/**,scripts/tool-versions/**,.grype.yaml}"
+      instructions: |
+        Tooling config and gates. Flag any rule turned off or lowered in severity, any check removed or made
+        non-blocking, any error caught and ignored, any new ignore, skip or suppression, a weaker TypeScript
+        setting, or a version pin that got looser, unless the PR description says why. A tool is pinned in
+        one place; flag a second version of the same tool anywhere in the tree.
+    - path: "infra/**"
+      instructions: |
+        Terraform for Azure. No secrets, tokens or passwords in `.tf` files; they belong in Key Vault. No
+        hardcoded project, subscription, tenant or resource names; use variables. Flag role assignments
+        wider than the resource needs and anything that makes a resource public.
+    - path: "apps/api/**"
+      instructions: |
+        Express API. Validate request input with zod (see `src/validation`). Throw the typed errors in
+        `src/errors` instead of sending error responses by hand. Log with the shared pino logger, and never
+        log tokens, passwords or personal data.
+    - path: "apps/web/**"
+      instructions: |
+        React app. HTTP calls go through `src/lib/axios`, not axios or fetch directly. Server data goes
+        through TanStack Query (`src/lib/queryClient`). No secrets in `VITE_*` variables; they ship to the
+        browser.
+
+  tools:
+    # Every tool in CodeRabbit's schema is listed here. A tool left out of this list defaults to on, so each
+    # one is set on or off on purpose.
+    # On: CI doesn't run these, so they add signal.
+    gitleaks:
+      enabled: true # secrets
+    semgrep:
+      enabled: true # security patterns in TypeScript and workflows
+    zizmor:
+      enabled: true # GitHub Actions security
+    actionlint:
+      enabled: true # workflow syntax and expressions
+    github-checks:
+      enabled: true # lets CodeRabbit read failing CI checks on the PR
+    checkov:
+      enabled: true # IaC security scan for infra/; terraform validate only checks syntax
+    shellcheck:
+      enabled: true # no CI job lints the .sh scripts yet; turn off once one does
+    hadolint:
+      enabled: true # no CI job lints the Dockerfiles yet; turn off once one does
+    skillspector:
+      enabled: true # .claude/skills/** exists and CI does not scan it
+    # Off: CI already runs these (a finding would be reported twice), or they are noise for this stack.
+    eslint:
+      enabled: false # pnpm lint
+    oxc:
+      enabled: false # pnpm lint, once oxlint runs there
+    biome:
+      enabled: false # not used; Prettier formats
+    opengrep:
+      enabled: false # runs Semgrep rules; semgrep is already on, so findings would arrive twice
+    trufflehog:
+      enabled: false # gitleaks covers secrets
+    presidio:
+      enabled: false # PII scan; gitleaks covers secrets and the apps/api instruction covers logging personal data
+    reactDoctor:
+      enabled: false # react-doctor-web.yml runs it
+    ast-grep:
+      enabled: false # no custom rules yet
+    markdownlint:
+      enabled: false # prose style is not a review comment
+    languagetool:
+      enabled: false
+    vale:
+      enabled: false
+    yamllint:
+      enabled: false
+    stylelint:
+      enabled: false # one global.css; Prettier formats it
+    htmlhint:
+      enabled: false # one index.html
+    tflint:
+      enabled: false
+    trivy:
+      enabled: false
+    osvScanner:
+      enabled: false
+    dotenvLint:
+      enabled: false
+    # Off: the language or file type is not in this stack.
+    ruff:
+      enabled: false
+    flake8:
+      enabled: false
+    pylint:
+      enabled: false
+    golangci-lint:
+      enabled: false
+    rubocop:
+      enabled: false
+    brakeman:
+      enabled: false
+    phpstan:
+      enabled: false
+    phpmd:
+      enabled: false
+    phpcs:
+      enabled: false
+    swiftlint:
+      enabled: false
+    detekt:
+      enabled: false
+    pmd:
+      enabled: false
+    fbinfer:
+      enabled: false
+    clang:
+      enabled: false
+    cppcheck:
+      enabled: false
+    clippy:
+      enabled: false
+    fortitudeLint:
+      enabled: false
+    verilator:
+      enabled: false
+    luacheck:
+      enabled: false
+    buf:
+      enabled: false
+    regal:
+      enabled: false
+    circleci:
+      enabled: false
+    sqlfluff:
+      enabled: false
+    squawk:
+      enabled: false
+    prismaLint:
+      enabled: false
+    oasdiff:
+      enabled: false
+    checkmake:
+      enabled: false
+    shopifyThemeCheck:
+      enabled: false
+    smartyLint:
+      enabled: false
+    emberTemplateLint:
+      enabled: false
+    blinter:
+      enabled: false
+    psscriptanalyzer:
+      enabled: false
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+
+chat:
+  auto_reply: true
+  art: false
+
+knowledge_base:
+  opt_out: false
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "AGENTS.md" # not in the repo yet; picked up once added
+      - "CONTEXT.md"
+      - "Readme.md"
+      - ".claude/skills/**"
+  learnings:
+    scope: auto
+  pull_requests:
+    scope: auto

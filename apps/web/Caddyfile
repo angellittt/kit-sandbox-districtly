@@ -1,0 +1,7 @@
+localhost {
+    root * /usr/share/caddy
+    file_server
+
+    # SPA fallback
+    try_files {path} /index.html
+}

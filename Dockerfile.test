@@ -1,0 +1,24 @@
+# Runs the whole monorepo's test suite in a container - used by
+# docker-compose-test.yml. Unlike apps/api/Dockerfile and
+# apps/web/Dockerfile (which `turbo prune` down to a single app for a
+# lean production image), this keeps the full workspace since `pnpm
+# test` fans out across every app/package via turbo.
+# Keep in sync with mise.toml (checked by `pnpm check:tool-versions`).
+ARG NODE_VERSION=24.14.0
+FROM node:${NODE_VERSION}-alpine
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
+# ca-certificates/openssl so anything the test suite talks to over HTTPS
+# (registries, external APIs) works.
+RUN apk add --no-cache ca-certificates openssl
+RUN corepack enable
+# Keep in sync with mise.toml.
+ARG PNPM_VERSION=10.30.3
+RUN corepack prepare pnpm@${PNPM_VERSION} --activate
+
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile
+
+CMD ["pnpm", "test"]

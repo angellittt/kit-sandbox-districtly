@@ -1,0 +1,6 @@
+# You should commit backend.tf and terraform.tfvars. 
+# After executing setup.sh, these files will be generated with non-sensitive default values. 
+# By committing them, you ensure that everyone on the team has the necessary Terraform configuration
+# to work with the project without having to run setup.sh first.
+backend.tf
+terraform.tfvars

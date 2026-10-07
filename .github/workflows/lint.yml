@@ -1,0 +1,59 @@
+name: Lint
+
+# CI twin of the lint and format jobs in lefthook.yml's pre-commit hook.
+# The hook only checks staged files; this checks the whole repo, so a commit
+# made with `--no-verify` (or before hooks were installed) still gets caught.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: lint-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Nothing after checkout needs git auth, so keep the token off disk
+          # where install scripts or downloaded tools could read it.
+          persist-credentials: false
+
+      # Installs Node, pnpm and Terraform at the versions pinned in mise.toml.
+      # Preloop (also in mise.toml) is for running workflows locally, not in CI.
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        env:
+          MISE_DISABLE_TOOLS: github:preloopdev/preloop
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint workspace packages
+        run: pnpm lint
+
+      # Root-level files (e2e/, playwright.config.ts) don't belong to any
+      # workspace package, so turbo's lint task never sees them.
+      - name: Lint root files
+        run: pnpm lint:root
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      # Fails if lefthook.yml and the PR workflows stop running the same checks.
+      - name: Check hook and CI parity
+        run: pnpm check:hook-parity
+
+      - name: Test hook and CI parity check
+        run: pnpm test:hook-parity
+
+      # ci-local.sh and serve.sh must work on macOS's default /bin/bash (3.2), and the
+      # runner's bash is 5, so run its tests in a bash 3.2 container.
+      - name: Test ci:local under bash 3.2
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro" -w /repo
+          bash:3.2@sha256:0fd7cb8499c63a3c9345e7088a9cd83bb69f6e895e83833859aff838a0312091
+          sh -c 'apk add --no-cache -q git && bash scripts/ci-local/ci-local.test.sh && bash scripts/ci-local/serve.test.sh'

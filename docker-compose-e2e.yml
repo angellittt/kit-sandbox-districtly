@@ -1,0 +1,129 @@
+services:
+  api:
+    container_name: api_e2e
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+      target: development
+    environment:
+      NODE_ENV: test
+      PORT: 8000
+      HOST: 0.0.0.0
+      # ----------------------
+      #
+      # Fake credentials for whichever Azure-backed service a project wires
+      # up later (auth, storage, etc.) - e2e runs should never touch real
+      # Azure resources.
+      #
+      # AZURE_CLIENT_ID: fake-client-id
+      # AZURE_CLIENT_SECRET: fake-client-secret
+      # AZURE_TENANT_ID: fake-tenant-id
+      #
+      # ----------------------
+    networks:
+      - e2e
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "http://0.0.0.0:8000/api/v1/healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # ----------------------
+    #
+    # Uncomment if the api needs a database during e2e runs.
+    #
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #
+    # ----------------------
+
+  web:
+    container_name: web_e2e
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      target: development
+    environment:
+      VITE_API_URL: http://api:8000
+    networks:
+      - e2e
+    depends_on:
+      api:
+        condition: service_healthy
+
+  playwright:
+    container_name: playwright_e2e
+    # Tag must match the "@playwright/test" version pinned in package.json -
+    # the test runner and the browsers bundled in this image have to agree.
+    image: mcr.microsoft.com/playwright:v1.62.1-noble
+    working_dir: /app
+    # Starts as root (needed to chown the anonymous node_modules volumes
+    # below, which Docker creates root-owned) then drops to the host
+    # user via setpriv before installing/running anything, so files
+    # Playwright writes out (test-results/, playwright-report/) - and
+    # everything pnpm installs - aren't root-owned on the host afterwards.
+    environment:
+      BASE_URL: http://web:5173
+      API_URL: http://api:8000
+      HOME: /tmp
+      # The repo (including .git) is mounted below, so without this the
+      # container's `pnpm install` would rewrite the host's git hooks.
+      LEFTHOOK: "0"
+      # Passes GitHub Actions' CI=true through so playwright.config.ts turns
+      # on forbidOnly and retries. Empty locally, so `.only` still works there.
+      CI: ${CI:-}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/vitest-config/node_modules
+      - /app/packages/eslint-config/node_modules
+    entrypoint: []
+    # `corepack enable` writes global shims into the image's /usr/bin,
+    # which the non-root host user we drop to can't write to - so we
+    # drive pnpm through `corepack pnpm ...` instead, which only needs a
+    # writable cache dir (HOME=/tmp above). `corepack install` reads the
+    # pnpm version from package.json's packageManager, so no copy lives here.
+    command:
+      [
+        "sh",
+        "-c",
+        "chown -R ${HOST_UID:-1000}:${HOST_GID:-1000} /app/node_modules /app/apps/api/node_modules /app/apps/web/node_modules /app/packages/vitest-config/node_modules /app/packages/eslint-config/node_modules && setpriv --reuid=${HOST_UID:-1000} --regid=${HOST_GID:-1000} --clear-groups --no-new-privs sh -c 'corepack install && corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright test'",
+      ]
+    depends_on:
+      web:
+        condition: service_started
+      api:
+        condition: service_healthy
+    networks:
+      - e2e
+
+  # ----------------------
+  #
+  # Uncomment and configure if your e2e suite needs a database seeded
+  # independently of the api/web containers above. We are using PostgreSQL
+  # as an example, but you can replace it with any other database service
+  # you need.
+  #
+  # db:
+  #   image: postgres:18
+  #   container_name: postgres_e2e
+  #   shm_size: 128mb
+  #   environment:
+  #     POSTGRES_PASSWORD: devpassword
+  #     POSTGRES_DB: postgres_e2e
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+  #   networks:
+  #     - e2e
+  #
+  # ----------------------
+
+networks:
+  e2e:

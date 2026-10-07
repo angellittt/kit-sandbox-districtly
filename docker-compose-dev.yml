@@ -1,0 +1,72 @@
+services:
+  web:
+    container_name: web_dev
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      target: development
+    ports:
+      - 5173:5173
+    networks:
+      - ttt_network
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./apps/web/package.json
+  api:
+    container_name: api_dev
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+      target: development
+    ports:
+      - 8000:8000
+    networks:
+      - ttt_network
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "http://0.0.0.0:8000/api/v1/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    develop:
+      watch:
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./apps/api/package.json
+  # ----------------------
+  #
+  # Uncomment and configure if your application requires a database during development
+  # We are using PostgreSQL as an example, but you can replace it with any other database service you need
+  #
+  # db:
+  #     image: postgres:18
+  #     container_name: postgres_dev
+  #     ports:
+  #       - 5432:5432
+  #     shm_size: 128mb
+  #     environment:
+  #       # POSTGRES_USER: postgres # Default user is 'postgres', you can change it if needed
+  #       # POSTGRES_DB: postgres # Default database is the same as POSTGRES_USER, you can change it if needed
+  #       POSTGRES_PASSWORD: devpassword
+  #     volumes:
+  #       - ./volumes/postgresql:/var/lib/postgresql
+  #     networks:
+  #       - ttt_network
+  # ----------------------
+networks:
+  ttt_network:

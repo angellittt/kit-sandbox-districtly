@@ -1,0 +1,40 @@
+{
+  "name": "api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@pinojs/redact": "^0.4.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-zod-safe": "^3.2.1",
+    "http-status": "^2.1.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/oxlint-config": "workspace:*",
+    "@repo/vitest-config": "workspace:*",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.3.2",
+    "@vitest/coverage-istanbul": "^4.1.11",
+    "axios": "^1.18.0",
+    "eslint": "^10.0.3",
+    "jiti": "^2.6.1",
+    "oxlint": "^1.85.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --project tsconfig.app.json",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint && eslint .",
+    "lint:fix": "oxlint --fix; ox=$?; eslint . --fix && exit $ox"
+  }
+}

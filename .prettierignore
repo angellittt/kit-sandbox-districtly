@@ -1,0 +1,69 @@
+pnpm-lock.yaml
+
+# Following .gitignore file
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.staging.local
+.env.production.local
+*.local
+
+# Testing
+coverage
+coverage.json
+
+
+# SBOMs generated locally by `pnpm sbom`
+/sbom/
+
+# Turborepo cache
+.turbo
+
+# Vercel
+.vercel
+
+# Build outputs
+.next/
+out/
+build
+dist
+dist-ssr
+
+
+# Debug and Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# Editor directories, OS & misc
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+*.pem
+
+# Docker volumes
+volumes/
+
+# TypeScript incremental build info
+tsconfig*.tsbuildinfo
+
+# Terraform code
+*.tf

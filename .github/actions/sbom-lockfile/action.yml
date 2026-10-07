@@ -1,0 +1,103 @@
+name: SBOM from lockfile
+description: >
+  Generates a CycloneDX 1.6 SBOM from a JS lockfile with cdxgen and uploads it
+  as a workflow artifact. mode "full" lists every package (dev deps included);
+  mode "prod" lists only the production dependency tree of one project.
+  Self-contained: no repo-specific paths, so it can move to a shared actions
+  repo as is. Needs Node on the runner.
+
+inputs:
+  name:
+    description: SBOM name. Used for the file (<name>.cdx.json) and the artifact (sbom-<name>).
+    required: true
+  mode:
+    description: prod or full
+    required: false
+    default: full
+  path:
+    description: Folder that holds the lockfile.
+    required: false
+    default: "."
+  workspace:
+    description: >
+      Mode prod only. Workspace folder relative to path (e.g. apps/web). Leave
+      empty for a single-package repo.
+    required: false
+    default: ""
+  fetch-licenses:
+    description: >
+      Look up each package's license on the npm registry. A lockfile has no
+      license data, so without this the SBOM lists no licenses. Adds about a
+      minute for ~800 packages.
+    required: false
+    default: "true"
+  output-dir:
+    description: Folder to write the SBOM to.
+    required: false
+    default: sbom
+  cdxgen-version:
+    description: "@cyclonedx/cdxgen version to run."
+    required: false
+    default: 12.8.4
+  cdxgen-bin:
+    description: >
+      Path to a cdxgen already installed from your lockfile (e.g.
+      node_modules/.bin/cdxgen after pnpm install --frozen-lockfile), so its
+      whole dependency tree is locked. Empty runs cdxgen-version through npx,
+      which pins cdxgen itself but not its dependencies.
+    required: false
+    default: ""
+  upload:
+    description: Upload the SBOM as a workflow artifact.
+    required: false
+    default: "true"
+  retention-days:
+    description: Artifact retention in days. Empty uses the repo default.
+    required: false
+    default: ""
+  commit-sha:
+    description: Commit the SBOM describes, shown in the step summary. Empty uses GITHUB_SHA.
+    required: false
+    default: ""
+
+outputs:
+  sbom-file:
+    description: Path to the generated SBOM.
+    value: ${{ steps.generate.outputs.sbom-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate SBOM
+      id: generate
+      shell: bash
+      env:
+        CDXGEN_VERSION: ${{ inputs.cdxgen-version }}
+        CDXGEN: ${{ inputs.cdxgen-bin }}
+        INPUT_NAME: ${{ inputs.name }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_WORKSPACE: ${{ inputs.workspace }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_COMMIT_SHA: ${{ inputs.commit-sha }}
+        INPUT_FETCH_LICENSES: ${{ inputs.fetch-licenses }}
+      run: |
+        args=(--name "$INPUT_NAME" --mode "$INPUT_MODE" --path "$INPUT_PATH" --output-dir "$INPUT_OUTPUT_DIR")
+        if [ -n "$INPUT_WORKSPACE" ]; then args+=(--workspace "$INPUT_WORKSPACE"); fi
+        if [ "$INPUT_FETCH_LICENSES" = "true" ]; then args+=(--fetch-licenses); fi
+        file="$("$GITHUB_ACTION_PATH/generate.sh" "${args[@]}" | tail -n 1)"
+        echo "sbom-file=$file" >> "$GITHUB_OUTPUT"
+        count="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).components?.length ?? 0)' "$file")"
+        {
+          echo "### SBOM: $INPUT_NAME"
+          echo "CycloneDX 1.6, mode \`$INPUT_MODE\`, $count components, commit \`${INPUT_COMMIT_SHA:-$GITHUB_SHA}\`."
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload SBOM
+      if: inputs.upload == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: sbom-${{ inputs.name }}
+        path: ${{ steps.generate.outputs.sbom-file }}
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: error

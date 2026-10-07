@@ -1,0 +1,28 @@
+{
+  "name": "@repo/oxlint-config",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared oxlint config and the repo-conventions plugin (custom lint rules).",
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json",
+    "./react.json": "./react.json",
+    "./plugins/repo-conventions": "./src/plugins/repo-conventions.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@oxlint/plugins": "^1.85.0"
+  },
+  "devDependencies": {
+    "@repo/vitest-config": "workspace:*",
+    "@types/node": "^25.3.5",
+    "@vitest/coverage-istanbul": "^4.0.18",
+    "oxlint": "^1.85.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+minimumReleaseAge: 10080 # 7 days - guards against supply-chain attacks by waiting before picking up brand-new npm releases
+# Fail `pnpm install` on a Node/pnpm outside package.json "engines" (kept in
+# step with mise.toml), so a shell without mise activated gets a clear error.
+engineStrict: true

@@ -1,0 +1,22 @@
+{
+  "name": "@repo/claude-hooks",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint --max-warnings=0 .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/vitest-config": "workspace:*",
+    "@types/node": "^25.3.5",
+    "@vitest/coverage-istanbul": "^4.0.18",
+    "eslint": "^10.0.3",
+    "jiti": "^2.6.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "globalEnv": ["CI", "API_URL", "BASE_URL"],
+  "tasks": {
+    "dev": {
+      "env": ["PORT", "HOST", "NODE_ENV"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "lint:fix": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "build": {
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "public/dist/**"]
+    },
+    "test": {
+      "env": ["NODE_ENV"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/vitest.config.ts"],
+      "dependsOn": ["transit", "@repo/vitest-config#build"],
+      "outputs": ["coverage.json"]
+    },
+    "typecheck": {
+      "dependsOn": ["transit", "@repo/vitest-config#build"],
+      "outputs": []
+    },
+    "//#typecheck:root": {
+      "dependsOn": ["@repo/vitest-config#build"],
+      "inputs": ["tsconfig.json", "eslint.config.ts", "vitest.config.ts"],
+      "outputs": []
+    },
+    "transit": {
+      "dependsOn": ["^transit"]
+    }
+  }
+}

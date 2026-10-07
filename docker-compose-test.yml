@@ -1,0 +1,61 @@
+services:
+  test:
+    container_name: test
+    build:
+      context: .
+      dockerfile: ./Dockerfile.test
+    environment:
+      NODE_ENV: test
+      # ----------------------
+      #
+      # Point this at a disposable test database if your project adds one.
+      # apps/api/src/lib/assertTestDatabase.ts exists specifically to refuse
+      # to run unless this looks like a test DB - wire it in wherever the
+      # project reads this env var.
+      #
+      # DATABASE_URL: postgresql://postgres:devpassword@db:5432/postgres_test
+      #
+      # ----------------------
+    volumes:
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/vitest-config/node_modules
+      - /app/packages/eslint-config/node_modules
+      # Coverage volume - keeps generated coverage reports on the host so
+      # they survive the container being torn down.
+      - ./packages/vitest-config/coverage:/app/packages/vitest-config/coverage
+    develop:
+      watch:
+        - action: sync
+          path: ./apps
+          target: /app/apps
+        - action: sync
+          path: ./packages
+          target: /app/packages
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./package.json
+  # ----------------------
+  #
+  # Uncomment and configure if your test suite needs a database. We are
+  # using PostgreSQL as an example, but you can replace it with any other
+  # database service you need.
+  #
+  # db:
+  #   image: postgres:18
+  #   container_name: postgres_test
+  #   shm_size: 128mb
+  #   environment:
+  #     POSTGRES_PASSWORD: devpassword
+  #     POSTGRES_DB: postgres_test
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+  #
+  # ----------------------

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../packages/oxlint-config/react.json"],
+  "jsPlugins": [
+    {
+      "name": "repo",
+      "specifier": "@repo/oxlint-config/plugins/repo-conventions"
+    }
+  ],
+  "rules": {
+    "repo/no-direct-axios": "error"
+  },
+  "overrides": [
+    {
+      // The shared client is the one place allowed to import axios.
+      "files": ["src/lib/axios.ts", "src/lib/__tests__/axios.test.ts"],
+      "rules": { "repo/no-direct-axios": "off" }
+    }
+  ]
+}

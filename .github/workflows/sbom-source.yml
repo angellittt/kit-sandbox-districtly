@@ -1,0 +1,78 @@
+name: Source SBOM
+
+# Source SBOM (internal): every package in pnpm-lock.yaml, dev deps included,
+# for build-time supply chain visibility. Uploaded as a workflow artifact.
+# Set the repo variable SBOM_SOURCE_ENABLED to "false" to turn it off.
+#
+# The scan job runs Grype on that SBOM. It fails on fixable vulnerabilities at
+# or above the repo variable GRYPE_FAIL_ON (default critical), and lists
+# flagged licenses as warnings. Not a required check yet. See SBOM.md.
+#
+# The daily schedule scans main, so a new advisory for a package already on
+# main shows up there first, instead of turning every open PR red at once.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sbom-source-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    if: vars.SBOM_SOURCE_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # On a PR, check out the head commit instead of the default merge
+          # commit, so the SHA in the artifact name matches what was scanned.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      # No Node setup step: cdxgen only reads the lockfile, and the Node that
+      # ships on the runner is enough for that (and for the tests below).
+
+      - name: Test SBOM actions
+        run: node --test .github/actions/sbom-*/*.test.mjs
+
+      - name: Generate source SBOM
+        uses: ./.github/actions/sbom-lockfile
+        with:
+          name: source-${{ github.event.pull_request.head.sha || github.sha }}
+          commit-sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          mode: full
+
+  scan:
+    name: Vulnerability scan
+    needs: sbom
+    runs-on: ubuntu-latest
+    env:
+      SBOM_NAME: source-${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      # For .grype.yaml and the scan action.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Download source SBOM
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom-${{ env.SBOM_NAME }}
+          path: sbom
+
+      - name: Scan source SBOM
+        uses: ./.github/actions/sbom-scan
+        with:
+          sbom-file: sbom/${{ env.SBOM_NAME }}.cdx.json
+          name: source
+          fail-on: ${{ vars.GRYPE_FAIL_ON || 'critical' }}

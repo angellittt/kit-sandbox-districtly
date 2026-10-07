@@ -1,0 +1,9 @@
+# Code owners
+#
+# Placeholder entries — replace @your-github-handle with the actual
+# owner(s) for each top-level app before relying on this for review
+# routing / branch protection.
+
+apps/api/  @your-github-handle
+apps/web/  @your-github-handle
+infra/     @your-github-handle

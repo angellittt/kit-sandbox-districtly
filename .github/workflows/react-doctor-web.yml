@@ -1,0 +1,47 @@
+name: React Doctor (web)
+
+# Non-blocking React perf/correctness linting (millionco/react-doctor) on
+# files changed under apps/web/** or packages/**. Pinned to a commit SHA
+# (not a tag) as a supply-chain precaution for a third-party action.
+#
+# The trigger includes packages/** on the assumption that a shared package
+# change can affect apps/web even though the scan target below is fixed to
+# apps/web. With `scope: changed`, a PR that only touches packages/** will
+# still spin up this job, but the action auto-skips since no apps/web files
+# changed; that's a deliberate no-op, not a bug.
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: react-doctor-web-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  react-doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      # millionco/react-doctor@v2 (v2.2.8), pinned by commit SHA.
+      - uses: millionco/react-doctor@01820bb4fd4d0a4aebcd8df2b2a143a098649cb2
+        with:
+          directory: apps/web
+          scope: changed
+          blocking: none
+          # The scan always runs. Comments and the commit status only post on a
+          # real PR: `pnpm ci:local` runs this with Preloop, whose engine reports
+          # repository id 0.
+          comment: ${{ github.repository_id != 0 && 'true' || 'false' }}
+          review-comments: ${{ github.repository_id != 0 && 'true' || 'false' }}
+          commit-status: ${{ github.repository_id != 0 && 'true' || 'false' }}

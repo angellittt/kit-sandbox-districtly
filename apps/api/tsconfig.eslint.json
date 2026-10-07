@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["@types/node"],
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src/**/*", "./eslint.config.ts", "./vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,118 @@
+name: Scan SBOM
+description: >
+  Scans a CycloneDX SBOM for known vulnerabilities with Grype and lists
+  packages with flagged licenses (copyleft or BUSL) or no license data, both
+  in the job summary. Fails on vulnerabilities at or above fail-on (fixable
+  ones only, by default); set fail-on to "none" to report only. Checks that
+  every suppression in the Grype config has a VEX state, a reason and an
+  expiry date that hasn't passed and is at most max-expiry-days out. License
+  findings are warnings only. Self-contained: no repo-specific paths, so it
+  can move to a shared actions repo as is. Needs Node and yq on the runner
+  (both come with GitHub's Ubuntu runners).
+
+inputs:
+  sbom-file:
+    description: Path to the CycloneDX SBOM to scan.
+    required: true
+  name:
+    description: Name shown in the job summary headings.
+    required: true
+  fail-on:
+    description: >
+      Fail on vulnerabilities at or above this severity: negligible, low,
+      medium, high or critical. "none" reports only and never fails, and turns
+      suppression problems into warnings.
+    required: false
+    default: critical
+  only-fixed:
+    description: Only fail on vulnerabilities that have a fixed version.
+    required: false
+    default: "true"
+  config:
+    description: >
+      Grype config holding the ignore list. Skipped when the file doesn't
+      exist.
+    required: false
+    default: .grype.yaml
+  max-expiry-days:
+    description: >
+      Latest allowed suppression expiry, in days from today. Keeps every
+      suppression on a short re-review cycle.
+    required: false
+    default: "90"
+  grype-version:
+    description: Grype version to run.
+    required: false
+    default: v0.119.0
+
+outputs:
+  report-file:
+    description: Path to the Grype JSON report.
+    value: ${{ steps.scan.outputs.report-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Grype
+      id: grype
+      uses: anchore/scan-action/download-grype@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+      with:
+        grype-version: ${{ inputs.grype-version }}
+        cache-db: true
+
+    - name: Check suppressions
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.config }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        MAX_DAYS: ${{ inputs.max-expiry-days }}
+        NAME: ${{ inputs.name }}
+      run: |
+        if [ ! -f "$CONFIG" ]; then
+          echo "No Grype config at $CONFIG, no suppressions to check."
+          exit 0
+        fi
+        json="$RUNNER_TEMP/grype-config-$NAME.json"
+        yq -o=json '.' "$CONFIG" > "$json"
+        flags=(--max-days "$MAX_DAYS")
+        if [ -z "$FAIL_ON" ] || [ "$FAIL_ON" = "none" ]; then flags+=(--warn-only); fi
+        node "$GITHUB_ACTION_PATH/suppressions.mjs" "$json" "${flags[@]}"
+
+    # Keep going after a failed suppression check, so the summary still shows
+    # the scan results.
+    - name: Scan for vulnerabilities
+      id: scan
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        GRYPE: ${{ steps.grype.outputs.cmd }}
+        SBOM_FILE: ${{ inputs.sbom-file }}
+        CONFIG: ${{ inputs.config }}
+        NAME: ${{ inputs.name }}
+      run: |
+        report="$RUNNER_TEMP/grype-$NAME.json"
+        args=("sbom:$SBOM_FILE" --output json --file "$report")
+        if [ -f "$CONFIG" ]; then args+=(--config "$CONFIG"); fi
+        "$GRYPE" "${args[@]}"
+        echo "report-file=$report" >> "$GITHUB_OUTPUT"
+
+    - name: List flagged licenses
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        SBOM_FILE: ${{ inputs.sbom-file }}
+        NAME: ${{ inputs.name }}
+      run: node "$GITHUB_ACTION_PATH/licenses.mjs" "$SBOM_FILE" --name "$NAME" --summary "$GITHUB_STEP_SUMMARY"
+
+    - name: Summarize vulnerabilities
+      if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
+      shell: bash
+      env:
+        REPORT: ${{ steps.scan.outputs.report-file }}
+        NAME: ${{ inputs.name }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        ONLY_FIXED: ${{ inputs.only-fixed }}
+      run: |
+        node "$GITHUB_ACTION_PATH/vulnerabilities.mjs" "$REPORT" \
+          --name "$NAME" --fail-on "$FAIL_ON" --only-fixed "$ONLY_FIXED" \
+          --summary "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,124 @@
+name: Deploy API to Azure
+
+# Branch -> GitHub Environment mapping is 1:1 except main -> production. Each target
+# environment (develop/qa/staging/production) needs its own GitHub Environment
+# (Settings > Environments) configured with:
+#   - secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID (from the
+#     github_actions_identity_* Terraform outputs — see infra/template/github_actions_identity.tf)
+#   - vars: ACR_NAME, APP_SERVICE_NAME (from the container_registry_name/app_service_name
+#     Terraform outputs)
+# Optional repo variables (see SBOM.md):
+#   - SBOM_ARTIFACT_ENABLED: "false" turns off the image SBOM step (on by default)
+#   - SBOM_ACR_ATTACH_ENABLED: "false" stops attaching the SBOM to the image in ACR
+#     (on by default, so the SBOM lives as long as the image)
+#   The image SBOM is also scanned with Grype (report only, never blocks).
+# The federated credential's trust subject is scoped to one specific GitHub Environment
+# name (var.github_actions_environment in Terraform), so it must match the environment
+# name resolved below.
+on:
+  push:
+    branches:
+      - develop
+      - qa
+      - staging
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target GitHub Environment to deploy to
+        required: true
+        type: choice
+        options:
+          - develop
+          - qa
+          - staging
+          - production
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy API
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name == 'main' && 'production' || github.ref_name }}
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name == 'main' && 'production' || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # Node, pnpm and Terraform from mise.toml, pnpm store cache, pnpm install.
+      - uses: ./.github/actions/setup
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --target production \
+            --tag ${{ vars.ACR_NAME }}.azurecr.io/api:${{ github.sha }} \
+            --tag ${{ vars.ACR_NAME }}.azurecr.io/api:latest \
+            --file apps/api/Dockerfile \
+            .
+
+      - name: Push Docker image to ACR
+        run: |
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/api:${{ github.sha }}
+          docker push ${{ vars.ACR_NAME }}.azurecr.io/api:latest
+
+      # Artifact SBOM (client deliverable): npm deps + base image OS packages of
+      # the image built above. Runs after the push so it can optionally attach
+      # the SBOM to the image in ACR. Never blocks the deploy.
+      - name: Generate image SBOM
+        id: sbom
+        if: vars.SBOM_ARTIFACT_ENABLED != 'false'
+        continue-on-error: true
+        uses: ./.github/actions/sbom-image
+        with:
+          image: ${{ vars.ACR_NAME }}.azurecr.io/api:${{ github.sha }}
+          name: api-${{ env.DEPLOY_ENV }}-${{ github.sha }}
+          attach-to-registry: ${{ vars.SBOM_ACR_ATTACH_ENABLED != 'false' }}
+
+      # This template ships no ORM/migration tool by default (each project picks its own).
+      # Add your project's migration command here once one exists, e.g.:
+      #
+      #   - name: Migrate database
+      #     run: pnpm --filter api db:migrate
+      #     env:
+      #       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ vars.APP_SERVICE_NAME }}
+          images: ${{ vars.ACR_NAME }}.azurecr.io/api:${{ github.sha }}
+
+      # Vulnerability + flagged license report for the image, in the job
+      # summary. Runs after the deploy so it never delays or blocks it.
+      - name: Scan image SBOM
+        if: ${{ !cancelled() && steps.sbom.outcome == 'success' }}
+        continue-on-error: true
+        uses: ./.github/actions/sbom-scan
+        with:
+          sbom-file: ${{ steps.sbom.outputs.sbom-file }}
+          name: api-${{ env.DEPLOY_ENV }}
+          fail-on: none
+
+      - name: Log out of Azure
+        if: always()
+        run: az logout
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed for commit ${{ github.sha }} to the ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name == 'main' && 'production' || github.ref_name }} environment. Check the logs above for details."

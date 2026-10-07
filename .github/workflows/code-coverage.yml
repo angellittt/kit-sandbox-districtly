@@ -1,0 +1,105 @@
+name: Code coverage
+
+# Runs the test suite, reads the merged coverage summary, and posts (or
+# updates) a single sticky PR comment with a per-metric coverage breakdown.
+# The coverage threshold is informational only, it warns but never fails
+# the build. This is deliberate: the goal right now is to get engineers
+# comfortable writing tests before we start enforcing a coverage floor.
+# A genuine test failure (the `pnpm test` step) still fails this check,
+# since this is also the repo's de-facto test gate.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: code-coverage-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  COVERAGE_WARN_THRESHOLD: 70
+  # "true" when `pnpm ci:local` runs this workflow with Preloop. Its engine
+  # reports repository id 0, and there is no real PR, so the PR comment steps
+  # below skip.
+  LOCAL_RUN: ${{ github.repository_id == 0 }}
+
+jobs:
+  code-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # Node, pnpm and Terraform from mise.toml, pnpm store cache, pnpm install.
+      - uses: ./.github/actions/setup
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Generate coverage report
+        run: pnpm test:report
+
+      - name: Upload coverage report artifact
+        id: upload-coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-pr-${{ github.event.pull_request.number || 'local' }}
+          path: packages/vitest-config/coverage/report/
+          retention-days: 14
+
+      - name: Generate and read coverage summary
+        id: coverage
+        run: |
+          COVERAGE_FILE=packages/vitest-config/coverage/report/coverage-summary.json
+          THRESHOLD="$COVERAGE_WARN_THRESHOLD"
+          if [ ! -f "$COVERAGE_FILE" ]; then
+            echo "file not found: $COVERAGE_FILE"
+            echo "lines=0" >> $GITHUB_OUTPUT
+            echo "statements=0" >> $GITHUB_OUTPUT
+            echo "functions=0" >> $GITHUB_OUTPUT
+            echo "branches=0" >> $GITHUB_OUTPUT
+            echo "threshold_warning=" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          cat "$COVERAGE_FILE"
+          LINES=$(jq -r '.total.lines.pct // 0' "$COVERAGE_FILE" || echo 0)
+          STATEMENTS=$(jq -r '.total.statements.pct // 0' "$COVERAGE_FILE" || echo 0)
+          FUNCTIONS=$(jq -r '.total.functions.pct // 0' "$COVERAGE_FILE" || echo 0)
+          BRANCHES=$(jq -r '.total.branches.pct // 0' "$COVERAGE_FILE" || echo 0)
+          [ "$LINES" = "Unknown" ] && LINES="N/A"
+          [ "$STATEMENTS" = "Unknown" ] && STATEMENTS="N/A"
+          [ "$FUNCTIONS" = "Unknown" ] && FUNCTIONS="N/A"
+          [ "$BRANCHES" = "Unknown" ] && BRANCHES="N/A"
+          echo "lines=$LINES" >> $GITHUB_OUTPUT
+          echo "statements=$STATEMENTS" >> $GITHUB_OUTPUT
+          echo "functions=$FUNCTIONS" >> $GITHUB_OUTPUT
+          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
+          WARNING=""
+          if [ "$LINES" != "N/A" ] && awk "BEGIN { exit !($LINES < $THRESHOLD) }"; then
+            WARNING="⚠️ **Line coverage (${LINES}%) is below the ${THRESHOLD}% threshold.** This won't block merging, but please add tests where you can."
+          fi
+          echo "threshold_warning=$WARNING" >> $GITHUB_OUTPUT
+
+      - name: Post coverage comment
+        if: env.LOCAL_RUN != 'true'
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
+        with:
+          message: |
+            🧪 **Test Coverage** (how much of the code ran during tests)
+            - Lines: ${{ steps.coverage.outputs.lines }}% (lines of code that ran)
+            - Statements: ${{ steps.coverage.outputs.statements }}% (individual commands that ran)
+            - Functions: ${{ steps.coverage.outputs.functions }}% (functions that got called)
+            - Branches: ${{ steps.coverage.outputs.branches }}% (if/else paths that got tested)
+            ${{ steps.coverage.outputs.threshold_warning }}
+
+            📄 [Download full HTML coverage report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload-coverage.outputs.artifact-id }}) (unzip and open `index.html`)
+
+      - name: Check for test failures
+        if: failure() && env.LOCAL_RUN != 'true'
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2.9.4
+        with:
+          message: |
+            ❌ **This check failed.** Check the workflow run logs: either the test suite failed, or the coverage summary couldn't be generated/read.

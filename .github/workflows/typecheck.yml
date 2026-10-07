@@ -1,0 +1,42 @@
+name: Typecheck
+
+# Runs `tsc` across every app/package (plus the two root-level config files
+# that aren't part of any workspace project). Unlike code-coverage.yml, this
+# check is blocking by design: the whole point is that a broken type can no
+# longer merge unnoticed. Mark this job as a required status check in branch
+# protection settings once it's run at least once on this branch.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: typecheck-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      # Node, pnpm and Terraform from mise.toml plus the pnpm store cache.
+      # Dependencies are installed below, after the fast tool-version checks.
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
+
+      # Fails if a Dockerfile, package.json or workflow drifts from mise.toml.
+      - name: Check tool versions
+        run: pnpm check:tool-versions
+
+      # Tests for the check above, so a regression in it can't slip through.
+      - name: Test tool-version check
+        run: pnpm test:tool-versions
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck

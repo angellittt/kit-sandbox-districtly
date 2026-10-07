@@ -1,0 +1,20 @@
+# Grype config: vulnerability suppressions for the SBOM scan.
+# See SBOM.md > Suppressing a vulnerability.
+#
+# Every entry needs the fields below. The scan fails if one is missing, or
+# `expires` has passed or is more than 90 days out, so each suppression gets
+# re-reviewed. Grype reads vulnerability, package and reason. Only our check
+# reads `state`, `justification` and `expires`. They map to CycloneDX VEX.
+#
+# Example:
+#
+#   ignore:
+#     - vulnerability: GHSA-xxxx-xxxx-xxxx # or CVE-2026-12345, the ID Grype reports
+#       package:
+#         name: some-package
+#         version: 1.2.3 # optional, leave out to cover every version
+#       state: not_affected # CycloneDX analysis.state: not_affected, exploitable, false_positive, in_triage, resolved, resolved_with_pedigree
+#       justification: code_not_reachable # required when state is not_affected, a CycloneDX analysis.justification value
+#       reason: Only used by a dev script, never ships.
+#       expires: "2026-12-15" # YYYY-MM-DD, at most 90 days out
+ignore: []
