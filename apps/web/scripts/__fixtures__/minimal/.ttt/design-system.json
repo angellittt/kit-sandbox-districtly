@@ -1,0 +1,9 @@
+{
+  "designSystem": "https://example.invalid/fixture",
+  "schema": "ttt-ds/1",
+  "profile": "shadcn",
+  "tokensIn": ".ttt/tokens.json",
+  "tokensOut": "styles/tokens.css",
+  "namespace": "Acme",
+  "typeClassPrefix": "ac-t-"
+}

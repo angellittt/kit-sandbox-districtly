@@ -1,0 +1,167 @@
+{
+  "//": "design-system-kit 0.4.1 · profile shadcn · kit file. The tested range: the lowest and highest version of each package that the kit's acceptance runs passed on (fresh app from the dev setup checklist, kit applied from the kit alone, every check green). Widen it only by passing another acceptance run. `packages` holds what every framework's runs share; `frameworks.<name>` adds what that framework's runs passed on, and wins where both list a package. `ds-validate --preflight` compares the installed versions against `packages` plus the app's framework.",
+  "runs": [
+    {
+      "date": "2026-10-07",
+      "kit": "0.1.1",
+      "name": "floor",
+      "what": "create-next-app@15.5 + shadcn@4.21.1 init as installed",
+      "framework": "next"
+    },
+    {
+      "date": "2026-10-07",
+      "kit": "0.1.1",
+      "name": "ceiling",
+      "what": "floor with react and react-dom at 19.3.0, the newest 19.x",
+      "framework": "next"
+    },
+    {
+      "date": "2026-10-08",
+      "kit": "0.4.0",
+      "framework": "vite",
+      "name": "vite-floor",
+      "what": "TTT's full-stack starter template as cloned (pnpm 10 + Turborepo, apps/web on Vite 7 + React 19.2, ESLint 10 and Vitest 4 at the root, oxlint), plus tailwindcss + @tailwindcss/vite 4.3.3 and shadcn@4.21.1 init; kit applied from the kit alone"
+    }
+  ],
+  "packages": {
+    "react": {
+      "min": "19.1.0",
+      "max": "19.3.0",
+      "required": true
+    },
+    "react-dom": {
+      "min": "19.1.0",
+      "max": "19.3.0",
+      "required": true
+    },
+    "tailwindcss": {
+      "min": "4.3.3",
+      "max": "4.3.3",
+      "required": true
+    },
+    "@tailwindcss/cli": {
+      "min": "4.3.3",
+      "max": "4.3.3"
+    },
+    "@base-ui/react": {
+      "min": "1.8.0",
+      "max": "1.8.0",
+      "required": true
+    },
+    "class-variance-authority": {
+      "min": "0.7.1",
+      "max": "0.7.1",
+      "required": true
+    },
+    "cn": {
+      "min": "0.4.0",
+      "max": "0.4.0",
+      "required": true
+    },
+    "tw-animate-css": {
+      "min": "1.4.0",
+      "max": "1.4.0",
+      "required": true
+    },
+    "next-themes": {
+      "min": "0.4.6",
+      "max": "0.4.6"
+    },
+    "sonner": {
+      "min": "2.0.8",
+      "max": "2.0.8"
+    },
+    "typescript": {
+      "min": "5.9.3",
+      "max": "5.9.3",
+      "required": true
+    },
+    "react-day-picker": {
+      "min": "10.0.2",
+      "max": "10.0.2"
+    },
+    "date-fns": {
+      "min": "4.4.0",
+      "max": "4.4.0"
+    },
+    "esbuild": {
+      "min": "0.28.2",
+      "max": "0.28.2"
+    }
+  },
+  "frameworks": {
+    "next": {
+      "next": {
+        "min": "15.5.27",
+        "max": "15.5.27",
+        "required": true
+      },
+      "@tailwindcss/postcss": {
+        "min": "4.3.3",
+        "max": "4.3.3",
+        "required": true
+      },
+      "shadcn": {
+        "min": "4.21.4",
+        "max": "4.21.4",
+        "required": true
+      },
+      "lucide-react": {
+        "min": "1.52.0",
+        "max": "1.52.0",
+        "required": true
+      },
+      "vitest": {
+        "min": "3.2.7",
+        "max": "3.2.7"
+      },
+      "eslint": {
+        "min": "9.39.5",
+        "max": "9.39.5"
+      },
+      "eslint-plugin-jsx-a11y": {
+        "min": "6.10.2",
+        "max": "6.10.2"
+      }
+    },
+    "vite": {
+      "vite": {
+        "min": "7.3.1",
+        "max": "7.3.1",
+        "required": true
+      },
+      "@vitejs/plugin-react": {
+        "min": "5.1.4",
+        "max": "5.1.4",
+        "required": true
+      },
+      "@tailwindcss/vite": {
+        "min": "4.3.3",
+        "max": "4.3.3",
+        "required": true
+      },
+      "shadcn": {
+        "min": "4.21.0",
+        "max": "4.21.0",
+        "required": true
+      },
+      "lucide-react": {
+        "min": "1.49.0",
+        "max": "1.49.0",
+        "required": true
+      },
+      "vitest": {
+        "min": "4.1.11",
+        "max": "4.1.11"
+      },
+      "eslint": {
+        "min": "10.0.3",
+        "max": "10.0.3"
+      },
+      "jsdom": {
+        "min": "28.1.0",
+        "max": "28.1.0"
+      }
+    }
+  }
+}

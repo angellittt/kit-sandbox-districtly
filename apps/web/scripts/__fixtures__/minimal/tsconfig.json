@@ -1,0 +1,8 @@
+{
+  // Deliberately NOT the reference repo's layout: a different alias symbol
+  // and a different source directory, so the resolver is actually exercised.
+  "compilerOptions": {
+    "jsx": "preserve",
+    "paths": { "~/*": ["./lib/*"] }
+  }
+}

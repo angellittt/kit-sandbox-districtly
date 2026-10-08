@@ -1,6 +1,7 @@
 import reactEslintConfig from "@repo/eslint-config/eslint.react.config";
 import { disableRulesCoveredByOxlint } from "@repo/eslint-config/oxlint";
 import { defineConfig } from "eslint/config";
+import designSystem from "./eslint.design-system.mjs";
 export default defineConfig([
   ...reactEslintConfig,
   {
@@ -17,4 +18,5 @@ export default defineConfig([
     },
   },
   ...disableRulesCoveredByOxlint(`${import.meta.dirname}/.oxlintrc.json`),
+  ...designSystem,
 ]);

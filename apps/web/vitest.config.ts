@@ -10,6 +10,6 @@ export default mergeConfig(uiConfig, {
   test: {
     environment: "jsdom",
     setupFiles: "./src/tests/setup.ts",
-    exclude: ["dist", "node_modules"],
+    exclude: ["dist", "node_modules", "scripts/__fixtures__/**"],
   },
 });

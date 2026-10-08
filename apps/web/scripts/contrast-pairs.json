@@ -1,0 +1,23 @@
+{
+  "//": "design-system-kit 0.4.1 · profile shadcn · kit file. The contrast every system must reach, written against semantic token names (from the template's usage text). `foreground`/`background` take a name, a list, or a trailing * (chart-*). min is the WCAG ratio: 4.5 for text, 3 for large text, icons, control borders, focus and chart series.",
+  "pairs": [
+    { "foreground": ["label-normal", "label-strong", "label-neutral"], "background": ["background-normal", "background-alternative", "background-elevated"], "min": 4.5, "why": "body text" },
+    { "foreground": "label-alternative", "background": ["background-normal", "background-alternative"], "min": 4.5, "why": "supporting text" },
+    { "foreground": "label-assistive", "background": ["background-normal", "background-elevated"], "min": 4.5, "why": "placeholders" },
+    { "foreground": "label-disable", "background": "background-normal", "min": 4.5, "why": "disabled text (intentionally below, by convention)" },
+    { "foreground": "primary-text", "background": ["background-normal", "background-elevated", "primary-soft"], "min": 4.5, "why": "primary-coloured text" },
+    { "foreground": "secondary-text", "background": ["background-normal", "secondary-soft"], "min": 4.5, "why": "secondary-coloured text" },
+    { "foreground": "accent-text", "background": ["background-normal", "accent-soft"], "min": 4.5, "why": "accent-coloured text" },
+    { "foreground": "on-primary", "background": ["primary-normal", "primary-strong"], "min": 4.5, "why": "text on the primary fill" },
+    { "foreground": "on-secondary", "background": "secondary-normal", "min": 4.5, "why": "text on the secondary fill" },
+    { "foreground": "on-accent", "background": "accent-normal", "min": 4.5, "why": "text on the accent fill" },
+    { "foreground": "status-positive", "background": "status-positive-soft", "min": 4.5, "why": "status text on its ground" },
+    { "foreground": "status-cautionary", "background": "status-cautionary-soft", "min": 4.5, "why": "status text on its ground" },
+    { "foreground": "status-negative", "background": "status-negative-soft", "min": 4.5, "why": "status text on its ground" },
+    { "foreground": "inverse-label", "background": "inverse-background", "min": 4.5, "why": "text on inverse chips" },
+    { "foreground": ["inverse-positive", "inverse-cautionary", "inverse-negative"], "background": "inverse-background", "min": 3, "why": "status icons on inverse chips" },
+    { "foreground": "focus-ring", "background": ["background-normal", "background-alternative", "background-elevated"], "min": 3, "why": "focus indicator" },
+    { "foreground": "line-strong", "background": "background-normal", "min": 3, "why": "control borders" },
+    { "foreground": "chart-*", "background": ["background-normal", "background-elevated"], "min": 3, "why": "chart series" }
+  ]
+}
