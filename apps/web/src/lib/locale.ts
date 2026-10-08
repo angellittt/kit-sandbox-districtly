@@ -1,4 +1,4 @@
-// design-system-kit 0.5.0 · profile shadcn · wiring: the app's locale defaults
+// design-system-kit 0.8.0 · profile shadcn · wiring: the app's locale defaults
 // App-owned: Setup seeds this file from the client's inputs; after that it is
 // the app's to edit (dev, or design through a PR). It is not a kit file.
 import { enCA } from "date-fns/locale";

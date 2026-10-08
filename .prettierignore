@@ -68,7 +68,8 @@ tsconfig*.tsbuildinfo
 # Terraform code
 *.tf
 # Design system (design-system-kit): the token snapshot must stay byte for
-# byte, the token file is generated, and the scripts are kit files.
+# byte, the token file is generated, and the CI check is a kit file.
 apps/web/.ttt/
-apps/web/scripts/
+apps/web/scripts/ds-validate.mjs
+apps/web/scripts/ds-drift.test.mjs
 apps/web/src/styles/ds-tokens.css

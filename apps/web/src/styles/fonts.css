@@ -1,136 +1,17 @@
-/* design-system-kit 0.5.0 · profile shadcn · wiring (Vite): fonts
+/* design-system-kit 0.8.0 · profile shadcn · wiring (Vite): fonts
  *
- * Vite has no font loader, so the faces are declared here and the three
- * family variables the token file reads are set on :root. The token file
- * falls back to --font-fallback-* when a variable isn't set, so a family
- * the design system leaves on the system stack needs no lines here.
- *
- * Setup writes one @font-face per file in the design system's type.fonts
- * (files copied to src/assets/fonts/), sets the variables for the families
- * it loads, and imports this file from the global CSS, after the token file.
- * A package such as @fontsource-variable/<family> works the same way: import
- * it instead of the @font-face lines and keep the variable.
- *
- * Keep this file UNLAYERED (no @layer around it). The token file's @theme
- * declares `--font-sans: var(--font-sans, <fallback>)` inside Tailwind's theme
- * layer; an unlayered :root rule beats it, so the family set here wins and
- * the fallback stack follows it. (Under Next.js, next/font does the same job
- * with a class on <html>.)
+ * Districtly's two families come from Fontsource packages (no font files in
+ * the repo): Public Sans for display, Source Sans 3 for body. Mono stays on
+ * the system stack. Unlayered on purpose: this :root beats the token file's
+ * own @theme declaration, so these families win and the fallback stacks
+ * follow them. Imported in the global CSS right after the token file.
  */
-
-/* Public Sans · normal · latin (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Public Sans";
-  src: url("../assets/fonts/public-sans-latin-wght-normal.woff2")
-    format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
-    U+2215, U+FEFF, U+FFFD;
-}
-
-/* Public Sans · normal · latin-ext (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Public Sans";
-  src: url("../assets/fonts/public-sans-latin-ext-wght-normal.woff2")
-    format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
-    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
-    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-/* Public Sans · italic · latin (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Public Sans";
-  src: url("../assets/fonts/public-sans-latin-wght-italic.woff2")
-    format("woff2");
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
-    U+2215, U+FEFF, U+FFFD;
-}
-
-/* Public Sans · italic · latin-ext (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Public Sans";
-  src: url("../assets/fonts/public-sans-latin-ext-wght-italic.woff2")
-    format("woff2");
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
-  unicode-range:
-    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
-    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
-    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-/* Source Sans 3 · normal · latin (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Source Sans 3";
-  src: url("../assets/fonts/source-sans-3-latin-wght-normal.woff2")
-    format("woff2");
-  font-weight: 200 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
-    U+2215, U+FEFF, U+FFFD;
-}
-
-/* Source Sans 3 · normal · latin-ext (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Source Sans 3";
-  src: url("../assets/fonts/source-sans-3-latin-ext-wght-normal.woff2")
-    format("woff2");
-  font-weight: 200 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
-    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
-    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-/* Source Sans 3 · italic · latin (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Source Sans 3";
-  src: url("../assets/fonts/source-sans-3-latin-wght-italic.woff2")
-    format("woff2");
-  font-weight: 200 900;
-  font-style: italic;
-  font-display: swap;
-  unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
-    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
-    U+2215, U+FEFF, U+FFFD;
-}
-
-/* Source Sans 3 · italic · latin-ext (Fontsource 5.3.0, OFL-1.1) */
-@font-face {
-  font-family: "Source Sans 3";
-  src: url("../assets/fonts/source-sans-3-latin-ext-wght-italic.woff2")
-    format("woff2");
-  font-weight: 200 900;
-  font-style: italic;
-  font-display: swap;
-  unicode-range:
-    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
-    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
-    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
+@import "@fontsource-variable/public-sans/wght.css";
+@import "@fontsource-variable/public-sans/wght-italic.css";
+@import "@fontsource-variable/source-sans-3/wght.css";
+@import "@fontsource-variable/source-sans-3/wght-italic.css";
 
 :root {
-  --font-display: "Public Sans";
-  --font-sans: "Source Sans 3";
+  --font-display: "Public Sans Variable";
+  --font-sans: "Source Sans 3 Variable";
 }

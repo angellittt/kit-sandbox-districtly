@@ -1,4 +1,4 @@
-// design-system-kit 0.5.0 · profile shadcn · stock component (base-nova + baseline only)
+// design-system-kit 0.8.0 · profile shadcn · stock component (base-nova + baseline only)
 /**
  * Stock base-nova (shadcn 4.21.1, 2026-10-07) + TTT baseline:
  * - Card: hairline ring-1 ring-foreground/10 -> border border-border.

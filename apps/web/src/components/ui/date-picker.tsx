@@ -1,4 +1,4 @@
-// design-system-kit 0.5.0 · profile shadcn · kit extension (replaces the stock file when chosen)
+// design-system-kit 0.8.0 · profile shadcn · kit extension (replaces the stock file when chosen)
 "use client";
 
 import * as React from "react";
@@ -234,6 +234,12 @@ export function DatePicker(props: DatePickerProps) {
   );
 }
 
+/** Typed text, its validation message, and the value it was typed against. */
+type Draft<T> = T & { error: string | null; against: string };
+
+/** A value's identity for the draft: the same instant compares equal. */
+const dayKey = (d: Date | undefined) => (d ? String(d.getTime()) : "");
+
 type Shared = {
   locale: Locale;
   dateFormat: string;
@@ -262,36 +268,42 @@ function SingleDatePicker({
   id,
   className,
 }: SingleProps & Shared) {
-  const [text, setText] = React.useState(() => fmt(value));
-  const [error, setError] = React.useState<string | null>(null);
-
-  // Picking updates the input.
-  React.useEffect(() => {
-    setText(fmt(value));
-    setError(null);
-    onValidationChange?.(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  // What the person typed, kept only while `value` is still the one it was
+  // typed against: when `value` changes (a pick, or the caller setting it),
+  // the input shows the new value in the same render. No effect, so no frame
+  // of stale text.
+  const [draft, setDraft] = React.useState<Draft<{ text: string }> | null>(
+    null,
+  );
+  const current = draft?.against === dayKey(value) ? draft : null;
+  const text = current ? current.text : fmt(value);
+  const error = current?.error ?? null;
 
   // Typing updates the calendar.
   const commit = (next: string) => {
-    setText(next);
+    const report = (message: string | null) => {
+      setDraft({ text: next, error: message, against: dayKey(value) });
+      onValidationChange?.(message);
+    };
     if (!next.trim()) {
-      setError(null);
-      onValidationChange?.(null);
+      report(null);
       onChange(undefined);
       return;
     }
     const parsed = parseTyped(next, locale, dateFormat);
     if (!parsed) {
-      const message = strings.invalid(hint);
-      setError(message);
-      onValidationChange?.(message);
+      report(strings.invalid(hint));
       return;
     }
-    setError(null);
-    onValidationChange?.(null);
+    report(null);
     onChange(parsed);
+  };
+
+  // Picking updates the input (through `value`) and clears any typed error.
+  const pick = (date: Date | undefined) => {
+    setDraft(null);
+    onValidationChange?.(null);
+    onChange(date);
   };
 
   return (
@@ -319,7 +331,7 @@ function SingleDatePicker({
           // Open on the typed month, not on today: otherwise typing a date
           // and then opening the calendar shows the wrong page of it.
           defaultMonth={value}
-          onSelect={onChange}
+          onSelect={pick}
           autoFocus
         />
       </CalendarButton>
@@ -341,24 +353,26 @@ function RangeDatePicker({
   id,
   className,
 }: RangeProps & Shared) {
-  const [startText, setStartText] = React.useState(() => fmt(value?.from));
-  const [endText, setEndText] = React.useState(() => fmt(value?.to));
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setStartText(fmt(value?.from));
-    setEndText(fmt(value?.to));
-    setError(null);
-    onValidationChange?.(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.from, value?.to]);
+  // As in single mode: the typed text applies only while `value` is the
+  // range it was typed against.
+  const [draft, setDraft] = React.useState<Draft<{
+    start: string;
+    end: string;
+  }> | null>(null);
+  const against = `${dayKey(value?.from)}|${dayKey(value?.to)}`;
+  const current = draft?.against === against ? draft : null;
+  const startText = current ? current.start : fmt(value?.from);
+  const endText = current ? current.end : fmt(value?.to);
+  const error = current?.error ?? null;
 
   const commit = (which: "from" | "to", next: string) => {
-    if (which === "from") setStartText(next);
-    else setEndText(next);
-
     const raw = which === "from" ? next : startText;
     const rawOther = which === "from" ? endText : next;
+    const report = (message: string | null) => {
+      setDraft({ start: raw, end: rawOther, error: message, against });
+      onValidationChange?.(message);
+    };
+
     const from = raw.trim() ? parseTyped(raw, locale, dateFormat) : undefined;
     const to = rawOther.trim()
       ? parseTyped(rawOther, locale, dateFormat)
@@ -366,21 +380,23 @@ function RangeDatePicker({
 
     const typedButUnparsed = (raw.trim() && !from) || (rawOther.trim() && !to);
     if (typedButUnparsed) {
-      const message = strings.invalid(hint);
-      setError(message);
-      onValidationChange?.(message);
+      report(strings.invalid(hint));
       return;
     }
     if (from && to && to < from) {
-      setError(strings.endBeforeStart);
-      onValidationChange?.(strings.endBeforeStart);
+      report(strings.endBeforeStart);
       return;
     }
-    setError(null);
-    onValidationChange?.(null);
+    report(null);
     onChange(
       from || to ? { from: from ?? undefined, to: to ?? undefined } : undefined,
     );
+  };
+
+  const pick = (range: DateRange | undefined) => {
+    setDraft(null);
+    onValidationChange?.(null);
+    onChange(range);
   };
 
   return (
@@ -420,7 +436,7 @@ function RangeDatePicker({
           locale={locale}
           selected={value}
           defaultMonth={value?.from}
-          onSelect={onChange}
+          onSelect={pick}
           numberOfMonths={2}
           autoFocus
         />

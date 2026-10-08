@@ -1,9 +1,0 @@
-/* Stand-in for a generated token file. */
-:root {
-  --brand: #3366ff;
-  --surface: #ffffff;
-}
-@theme inline {
-  --color-brand: var(--brand);
-  --color-surface: var(--surface);
-}
