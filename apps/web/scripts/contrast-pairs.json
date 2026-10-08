@@ -1,5 +1,5 @@
 {
-  "//": "design-system-kit 0.4.1 · profile shadcn · kit file. The contrast every system must reach, written against semantic token names (from the template's usage text). `foreground`/`background` take a name, a list, or a trailing * (chart-*). min is the WCAG ratio: 4.5 for text, 3 for large text, icons, control borders, focus and chart series.",
+  "//": "design-system-kit 0.5.0 · profile shadcn · kit file. The contrast every system must reach, written against semantic token names (from the template's usage text). `foreground`/`background` take a name, a list, or a trailing * (chart-*). min is the WCAG ratio: 4.5 for text, 3 for large text, icons, control borders, focus and chart series.",
   "pairs": [
     { "foreground": ["label-normal", "label-strong", "label-neutral"], "background": ["background-normal", "background-alternative", "background-elevated"], "min": 4.5, "why": "body text" },
     { "foreground": "label-alternative", "background": ["background-normal", "background-alternative"], "min": 4.5, "why": "supporting text" },

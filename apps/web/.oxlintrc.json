@@ -16,7 +16,7 @@
       "files": ["src/lib/axios.ts", "src/lib/__tests__/axios.test.ts"],
       "rules": { "repo/no-direct-axios": "off" }
     },
-    // design-system-kit 0.4.1 (wiring/vite/oxlint.design-system.jsonc): vendored
+    // design-system-kit 0.5.0 (wiring/vite/oxlint.design-system.jsonc): vendored
     // stock components, use-mobile and kit scripts.
     {
       "files": [

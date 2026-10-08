@@ -84,7 +84,7 @@ h6 {
   width: 1px;
 }
 
-/* design-system-kit 0.4.1 · theme block (replaces shadcn's theme variables) */
+/* design-system-kit 0.5.0 · theme block (replaces shadcn's theme variables) */
 /* Automatic source detection walks up from this file and can miss the
  * source directory (or scan markdown). Declare the scan root explicitly. */
 @source "../";

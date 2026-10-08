@@ -1,5 +1,5 @@
 {
-  "//": "design-system-kit 0.4.1 · profile shadcn · kit file. The tested range: the lowest and highest version of each package that the kit's acceptance runs passed on (fresh app from the dev setup checklist, kit applied from the kit alone, every check green). Widen it only by passing another acceptance run. `packages` holds what every framework's runs share; `frameworks.<name>` adds what that framework's runs passed on, and wins where both list a package. `ds-validate --preflight` compares the installed versions against `packages` plus the app's framework.",
+  "//": "design-system-kit 0.5.0 · profile shadcn · kit file. The tested range: the lowest and highest version of each package that the kit's acceptance runs passed on (fresh app from the dev setup checklist, kit applied from the kit alone, every check green). Widen it only by passing another acceptance run. `packages` holds what every framework's runs share; `frameworks.<name>` adds what that framework's runs passed on, and wins where both list a package. `ds-validate --preflight` compares the installed versions against `packages` plus the app's framework.",
   "runs": [
     {
       "date": "2026-10-07",

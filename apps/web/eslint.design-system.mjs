@@ -1,4 +1,4 @@
-// design-system-kit 0.4.1 · profile shadcn · wiring (Vite): ESLint blocks
+// design-system-kit 0.5.0 · profile shadcn · wiring (Vite): ESLint blocks
 //
 // Setup spreads these into the app's existing flat config, after the repo's
 // own entries (`...designSystem`), and never edits the repo's rules. If the

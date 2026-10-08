@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// design-system-kit 0.4.1 · profile shadcn · kit file — fix it in the kit, not per client
+// design-system-kit 0.5.0 · profile shadcn · kit file — fix it in the kit, not per client
 /**
  * ds-validate.mjs — the contract's config validation.
  *
@@ -8,7 +8,9 @@
  *   node scripts/ds-validate.mjs --repo <dir>  # validate another checkout
  *   node scripts/ds-validate.mjs --system <01-system.md>
  *                                             # …and check client-added ramps are listed
- *                                             # in the design system's System section
+ *                                             # in the design system's System section, and
+ *                                             # that its Client settings line matches the
+ *                                             # app's locale module
  *   node scripts/ds-validate.mjs --template <config.json> --tokens <tokens.json>
  *                                             # the kit's own templates ("{{…}}" allowed)
  *
@@ -16,8 +18,9 @@
  * token snapshot it points at (name grammar, aliases, cycles, colour formats,
  * the semantic tokens the profile's mapping needs, primitive ramps named by
  * role, never by hue), that the theme block's
- * `@source` resolves to the source root, and that the repo's `kitVersion` is
- * no newer than these scripts. Every error names the field and says how to
+ * `@source` resolves to the source root, that the app's locale module
+ * (`<aliases.lib>/locale.ts`: locale, week start, date format) holds valid
+ * values, and that the repo's `kitVersion` is no newer than these scripts. Every error names the field and says how to
  * fix it. Exits 1 on any error; warnings don't fail.
  *
  * Runs in CI and at the start of every skill run.
@@ -29,7 +32,7 @@ import { fileURLToPath } from "node:url"
 import { SHADCN_MAP, ALIAS_COLORS } from "./ds-tokens.mjs"
 
 /** The kit these scripts belong to. A repo may not claim a newer one. */
-export const KIT_VERSION = "0.4.1"
+export const KIT_VERSION = "0.5.0"
 const SCHEMA = "ttt-ds/1"
 const PROFILE = "shadcn"
 
@@ -158,15 +161,44 @@ const CONFIG_SCHEMA = {
   bundleExtras: { required: false, check: (v) => isObject(v) && Object.values(v).every((a) => Array.isArray(a) && a.every((n) => typeof n === "string" && /^[A-Za-z_$][\w$]*$/.test(n))) ? null : 'map a module to the export names the bundle adds, e.g. {"sonner": ["toast"]}' },
   componentFiles: { required: false, check: (v) => isObject(v) && Object.entries(v).every(([k, a]) => /^[A-Z][A-Za-z0-9]*$/.test(k) && Array.isArray(a) && a.length && a.every((f) => typeof f === "string" && /^[a-z0-9-]+\.tsx$/.test(f))) ? null : 'map each PascalCase component to its .tsx files, e.g. {"Input": ["input.tsx", "label.tsx"]}' },
   framework: { required: false, check: (v) => v in FRAMEWORKS ? null : `one of ${Object.keys(FRAMEWORKS).map((f) => `"${f}"`).join(", ")}; leave it out for "next"` },
-  settings: { required: true, check: (v) => isObject(v) ? null : "add settings: { locale, weekStartsOn, dateFormat }" },
   contrast: { required: false, check: (v) => isObject(v) ? null : 'an object: { "intentional": [{ "foreground", "background"?, "reason" }] }' },
   usingInCode: { required: false, check: (v) => isObject(v) ? null : 'an object: { "notes": ["…"] }' },
 }
 
-const SETTINGS_SCHEMA = {
-  locale: (v) => isLocale(v) ? null : 'a canonical BCP 47 tag, e.g. "en-US" or "fr-CA"',
+/** The app's locale module: what each value must be, how to fix it. */
+const LOCALE_SCHEMA = {
+  localeTag: (v) => isLocale(v) ? null : 'a canonical BCP 47 tag, e.g. "en-US" or "fr-CA"',
   weekStartsOn: (v) => Number.isInteger(v) && v >= 0 && v <= 6 ? null : "a number 0–6, 0 = Sunday; always stated, never derived from the locale",
   dateFormat: (v) => typeof v === "string" && isDateFormat(v) ? null : '"" to use the locale\'s pattern, or one day, month and year with one separator, e.g. "DD/MM/YYYY"',
+}
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+/**
+ * The values the app's locale module states, read from its source:
+ * `export const localeTag = "en-CA"`, `export const weekStartsOn = 1`,
+ * `export const dateFormat = "YYYY-MM-DD"`, `export const locale = enCA`.
+ * A value that isn't a plain literal reads as undefined.
+ */
+export function readLocaleModule(source) {
+  const lit = (name, re) => { const m = new RegExp(`export const ${name}\\s*(?::[^=]+)?=\\s*${re}`).exec(source); return m ? m[1] : undefined }
+  const week = lit("weekStartsOn", "(\\d+)")
+  return {
+    localeTag: lit("localeTag", '"([^"]*)"'),
+    weekStartsOn: week === undefined ? undefined : Number(week),
+    dateFormat: lit("dateFormat", '"([^"]*)"'),
+    locale: lit("locale", "([A-Za-z_$][\\w$]*)"),
+    imports: new Set([...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']date-fns\/locale["']/g)].flatMap((m) => m[1].split(",").map((x) => x.trim().split(/\s+as\s+/).pop()).filter(Boolean))),
+  }
+}
+
+/** The System section's Client settings line: locale, week start, date format. */
+export function readSystemSettings(markdown) {
+  const line = /\*\*Client settings\*\*([^\n]*)/.exec(markdown)?.[1]
+  if (!line) return null
+  const locale = /locale `([^`]+)`/.exec(line)?.[1]
+  const day = /week starts (?:on )?(\w+)/.exec(line)?.[1]
+  const format = /date format `([^`]*)`/.exec(line)?.[1]
+  return { localeTag: locale, weekStartsOn: day ? DAYS.indexOf(day[0].toUpperCase() + day.slice(1).toLowerCase()) : undefined, dateFormat: format }
 }
 
 // ---------------------------------------------------------------------------
@@ -186,21 +218,9 @@ function checkConfig(config, err, { placeholders = false } = {}) {
     if (problem) err(key, `is ${JSON.stringify(config[key])}`, problem)
   }
   for (const key of Object.keys(config)) {
+    if (key === "settings") continue // moved to the app's locale module in kit 0.5.0; validate() warns
     if (!(key in CONFIG_SCHEMA)) err(key, "isn't a key this kit knows", `remove it, or check its spelling against: ${Object.keys(CONFIG_SCHEMA).join(", ")}`)
   }
-
-  if (isObject(config.settings)) {
-    for (const [key, check] of Object.entries(SETTINGS_SCHEMA)) {
-      if (!(key in config.settings)) { err(`settings.${key}`, "is missing", check(undefined)); continue }
-      if (placeholders && isPlaceholder(config.settings[key])) continue
-      const problem = check(config.settings[key])
-      if (problem) err(`settings.${key}`, `is ${JSON.stringify(config.settings[key])}`, problem)
-    }
-    for (const key of Object.keys(config.settings)) {
-      if (!(key in SETTINGS_SCHEMA)) err(`settings.${key}`, "isn't a setting this kit knows", `remove it; settings are ${Object.keys(SETTINGS_SCHEMA).join(", ")}`)
-    }
-  }
-
   if (isObject(config.contrast)) {
     const list = config.contrast.intentional ?? []
     if (!Array.isArray(list)) err("contrast.intentional", "isn't a list", "a list of { foreground, background?, reason }")
@@ -242,6 +262,8 @@ export function validate(repo, { preflight = false, testedRange, system } = {}) 
   }
 
   checkConfig(config, err)
+  if ("settings" in config)
+    warn("settings", "is in .ttt/design-system.json; since kit 0.5.0 locale, week start and date format live in the app's locale module", "copy the values into <aliases.lib>/locale.ts (wiring/locale.ts) and remove settings from the config")
 
   // ---- kit version -----------------------------------------------------------
   if (semver(config.kitVersion)) {
@@ -282,6 +304,7 @@ export function validate(repo, { preflight = false, testedRange, system } = {}) 
 
   // ---- wiring: @source resolves to the source root -------------------------------
   checkSource(repo, err, warn)
+  checkLocale(repo, system, err, warn, notes)
 
   // ---- componentFiles name real files --------------------------------------------
   const ui = uiDir(repo)
@@ -407,6 +430,41 @@ function checkClientRamps(tokens, file, system, warn, notes) {
   const listed = listedInSystem(readFileSync(system, "utf8"))
   for (const ramp of added) if (!listed.has(ramp))
     warn(`${file} › ${ramp}-*`, "is a client-added ramp the System section doesn't list", `add it to the System section's client-specific choices, e.g. "A \`${ramp}\` ramp for …"`)
+}
+
+/**
+ * The app's locale module (`<aliases.lib>/locale.ts`): app-owned since kit
+ * 0.5.0 — Setup seeds it, devs edit it. Its values must be valid; with
+ * `--system`, they are compared with the System section's Client settings
+ * line, where design records the same decision. A difference is a warning:
+ * one side is out of date, and a person decides which.
+ */
+function checkLocale(repo, system, err, warn, notes) {
+  const cj = join(repo, "components.json")
+  if (!existsSync(cj) || !existsSync(join(repo, "tsconfig.json"))) return
+  const lib = resolveAlias(repo, readJsonc(cj).aliases?.lib ?? "@/lib")
+  if (!lib) { warn("components.json › aliases.lib", "doesn't resolve through tsconfig paths", "add the \"@/*\" path so the locale module can be found"); return }
+  const path = join(lib, "locale.ts")
+  const rel = relative(repo, path)
+  if (!existsSync(path)) { err(rel, "not found", "copy the kit's wiring/locale.ts there and set the client's locale, week start and date format (Setup does this)"); return }
+  const mod = readLocaleModule(readFileSync(path, "utf8"))
+  for (const [k, check] of Object.entries(LOCALE_SCHEMA)) {
+    if (mod[k] === undefined) { err(`${rel} › ${k}`, "isn't exported as a plain literal", `export const ${k} = …, so tools can read it`); continue }
+    const problem = check(mod[k])
+    if (problem) err(`${rel} › ${k}`, `is ${JSON.stringify(mod[k])}`, problem)
+  }
+  if (!mod.locale) err(`${rel} › locale`, "isn't exported", "export the date-fns locale, e.g. export const locale: Locale = enCA")
+  else if (!mod.imports.has(mod.locale)) err(`${rel} › locale`, `is ${mod.locale}, which isn't imported from date-fns/locale`, `import { ${mod.locale} } from "date-fns/locale"`)
+  else if (isLocale(mod.localeTag ?? "") && mod.locale !== mod.localeTag.replace(/-/g, ""))
+    warn(`${rel} › locale`, `is ${mod.locale}, but localeTag is ${mod.localeTag}`, `use date-fns's locale for ${mod.localeTag} (usually ${mod.localeTag.replace(/-/g, "")}), or the closest one it ships`)
+  if (!system) { notes.push(`${rel} not compared with the System section's Client settings (pass --system <01-system.md>)`); return }
+  if (!existsSync(system)) { warn("--system", `points at ${system}, which doesn't exist`, "save the design system's project/01-system.md and pass its path"); return }
+  const sys = readSystemSettings(readFileSync(system, "utf8"))
+  if (!sys) { warn("System section", "has no Client settings line", "add one: **Client settings** — locale `…` · week starts … · date format `…`."); return }
+  const show = (k, v) => k === "weekStartsOn" ? (DAYS[v] ?? String(v)) : JSON.stringify(v)
+  for (const k of Object.keys(LOCALE_SCHEMA))
+    if (sys[k] !== undefined && mod[k] !== undefined && sys[k] !== mod[k])
+      warn(`${rel} › ${k}`, `is ${show(k, mod[k])}; the System section records ${show(k, sys[k])}`, "design records the decision and code holds it: fix whichever is wrong, in a PR or a design-system edit")
 }
 
 function uiDir(repo) {

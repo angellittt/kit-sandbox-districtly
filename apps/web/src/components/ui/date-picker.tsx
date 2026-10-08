@@ -1,4 +1,4 @@
-// design-system-kit 0.4.1 · profile shadcn · kit extension (replaces the stock file when chosen)
+// design-system-kit 0.5.0 · profile shadcn · kit extension (replaces the stock file when chosen)
 "use client";
 
 import * as React from "react";
@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { dsDateFormat, dsLocale } from "@/lib/ds-settings";
+import { dateFormat as appDateFormat, locale as appLocale } from "@/lib/locale";
 import { cn } from "cn";
 
 /**
@@ -29,8 +29,8 @@ import { cn } from "cn";
  * Baseline (in this file because it has no stock file):
  * - `defaultMonth` follows the typed or selected value (the documented
  *   composition opens on today's month).
- * - `locale` defaults to `dsLocale`, and `dateFormat` to `dsDateFormat`
- *   (`@/lib/ds-settings`). Per the contract, a set `dateFormat` overrides the
+ * - `locale` defaults to `appLocale`, and `dateFormat` to `appDateFormat`
+ *   (`@/lib/locale`). Per the contract, a set `dateFormat` overrides the
  *   locale's own pattern; otherwise the pattern comes from the locale.
  *
  * Kit extension (candidate, profile capability "Typed date entry"):
@@ -57,8 +57,8 @@ function patternFromFormat(format: string): string {
  * hardcoded.
  */
 export function patternFor(
-  locale: Locale = dsLocale,
-  dateFormat: string = dsDateFormat,
+  locale: Locale = appLocale,
+  dateFormat: string = appDateFormat,
 ): string {
   if (dateFormat?.trim()) return patternFromFormat(dateFormat.trim());
   // date-fns exposes the locale's short date format; fall back to the ISO-ish
@@ -74,8 +74,8 @@ export function patternFor(
 
 /** The same pattern spelled for a person: MM/dd/yyyy -> MM/DD/YYYY. */
 export function hintFor(
-  locale: Locale = dsLocale,
-  dateFormat: string = dsDateFormat,
+  locale: Locale = appLocale,
+  dateFormat: string = appDateFormat,
 ): string {
   return patternFor(locale, dateFormat).replace(/d/g, "D").replace(/y/g, "Y");
 }
@@ -83,8 +83,8 @@ export function hintFor(
 /** Parse a typed date in the active pattern. Returns null when it is not one. */
 export function parseTyped(
   text: string,
-  locale: Locale = dsLocale,
-  dateFormat: string = dsDateFormat,
+  locale: Locale = appLocale,
+  dateFormat: string = appDateFormat,
 ): Date | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -178,8 +178,8 @@ function CalendarButton({
 
 export function DatePicker(props: DatePickerProps) {
   const {
-    locale = dsLocale,
-    dateFormat = dsDateFormat,
+    locale = appLocale,
+    dateFormat = appDateFormat,
     typed = true,
     disabled,
     id,

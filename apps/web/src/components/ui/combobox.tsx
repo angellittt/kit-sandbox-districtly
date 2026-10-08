@@ -1,4 +1,4 @@
-// design-system-kit 0.4.1 · profile shadcn · stock component (base-nova + baseline only)
+// design-system-kit 0.5.0 · profile shadcn · stock component (base-nova + baseline only)
 /**
  * Stock base-nova (shadcn 4.21.1, 2026-10-07) + TTT baseline:
  * - Radius roles (D1): chips `rounded-lg` -> `rounded-sm` (text field; ComboboxInput gets it from InputGroup); items `rounded-md` -> `rounded-inset` (nested in the `rounded-lg` popup's `p-1` list).

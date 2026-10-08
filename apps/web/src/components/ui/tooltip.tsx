@@ -1,4 +1,4 @@
-// design-system-kit 0.4.1 · profile shadcn · stock component (base-nova + baseline only)
+// design-system-kit 0.5.0 · profile shadcn · stock component (base-nova + baseline only)
 /**
  * Stock base-nova (shadcn 4.21.1, 2026-10-07) + TTT baseline:
  * - Inverse role: popup `bg-foreground text-background` -> `bg-inverse text-inverse-foreground`; arrow `bg-foreground fill-foreground` -> `bg-inverse fill-inverse`.

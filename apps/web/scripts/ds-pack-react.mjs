@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// design-system-kit 0.4.1 · profile shadcn · kit file — fix it in the kit, not per client
+// design-system-kit 0.5.0 · profile shadcn · kit file — fix it in the kit, not per client
 /**
  * Pack React and ReactDOM as classic-script globals for a design system's
  * `components/lib/`.

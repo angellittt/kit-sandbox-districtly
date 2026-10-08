@@ -1,13 +1,13 @@
 // @vitest-environment node
-// design-system-kit 0.4.1 · profile shadcn · harness: ds-validate tests
+// design-system-kit 0.5.0 · profile shadcn · harness: ds-validate tests
 import { describe, expect, it } from "vitest"
 import { spawnSync } from "node:child_process"
 import { join, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
-import { validate, validateTemplate, isDateFormat, isLocale, compareVersions, KIT_VERSION, rampOf, hueIn, listedInSystem, installedVersion, detectFramework } from "../ds-validate.mjs"
+import { validate, validateTemplate, isDateFormat, isLocale, compareVersions, KIT_VERSION, rampOf, hueIn, listedInSystem, installedVersion, detectFramework, readLocaleModule, readSystemSettings } from "../ds-validate.mjs"
 import { writeFileSync, mkdtempSync, mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { repo, goodConfig, snapshot } from "./helpers.mjs"
+import { repo, goodConfig, snapshot, localeModule } from "./helpers.mjs"
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "../ds-validate.mjs")
 const fields = (r) => r.errors.map((e) => e.field)
@@ -30,12 +30,10 @@ describe("ds-validate: config", () => {
     expect(r.errors.find((e) => e.field === "tokenz").fix).toMatch(/tokensIn/)
   })
 
-  it("checks settings: BCP 47 locale, week start 0–6, date format", () => {
-    const config = goodConfig()
-    config.settings = { locale: "english", weekStartsOn: 7, dateFormat: "DD/DD/YYYY" }
-    expect(fields(validate(repo({ config })))).toEqual(
-      expect.arrayContaining(["settings.locale", "settings.weekStartsOn", "settings.dateFormat"])
-    )
+  it("warns, not fails, on a settings key left from kit 0.4 (moved to the locale module)", () => {
+    const r = validate(repo({ config: { ...goodConfig(), settings: { locale: "en-US", weekStartsOn: 1, dateFormat: "" } } }))
+    expect(r.errors).toEqual([])
+    expect(r.warnings.map((w) => w.field)).toContain("settings")
   })
 
   it("rejects a typeClassPrefix without a trailing dash and a lowercase namespace", () => {
@@ -106,7 +104,7 @@ describe("ds-validate: client-added ramps", () => {
     const dir = repo({ tokens: t, files: opts.system ? { "system.md": opts.system } : {} })
     return validate(dir, { system: opts.system ? join(dir, "system.md") : undefined })
   }
-  const SYSTEM = "# System\n\n**Probe-specific choices**\n- A `data` ramp for chart colours the brand roles can't supply.\n\n**Open deviations** — none.\n"
+  const SYSTEM = "# System\n\n**Client settings** — locale `en-US` · week starts Monday · date format `DD/MM/YYYY`.\n\n**Probe-specific choices**\n- A `data` ramp for chart colours the brand roles can't supply.\n\n**Open deviations** — none.\n"
 
   it("accepts a role-named ramp and, without --system, only notes it", () => {
     const r = withRamp("data")
@@ -225,6 +223,52 @@ describe("ds-validate: pre-flight before Setup", () => {
   })
 })
 
+describe("ds-validate: the app's locale module", () => {
+  const sys = (line) => {
+    const dir = mkdtempSync(join(tmpdir(), "ds-system-test-"))
+    writeFileSync(join(dir, "01-system.md"), `# System\n\n${line}\n`)
+    return join(dir, "01-system.md")
+  }
+  const at = (w) => w.map((x) => x.field)
+
+  it("checks BCP 47 tag, week start 0–6 and date format", () => {
+    const dir = repo({ files: { "src/lib/locale.ts": localeModule({ tag: "english", week: 7, format: "DD/DD/YYYY" }) } })
+    expect(fields(validate(dir))).toEqual(expect.arrayContaining([
+      "src/lib/locale.ts › localeTag", "src/lib/locale.ts › weekStartsOn", "src/lib/locale.ts › dateFormat",
+    ]))
+  })
+
+  it("fails when the module is missing or its locale isn't imported", () => {
+    const missing = repo()
+    writeFileSync(join(missing, "src/lib/locale.ts"), "")
+    expect(fields(validate(missing))).toContain("src/lib/locale.ts › localeTag")
+    const unimported = repo({ files: { "src/lib/locale.ts": localeModule().replace('import { enUS } from "date-fns/locale"', "") } })
+    expect(fields(validate(unimported))).toContain("src/lib/locale.ts › locale")
+  })
+
+  it("reads plain literals, aliases and the System line", () => {
+    const m = readLocaleModule('import { enCA as ca, fr } from "date-fns/locale"\nexport const localeTag = "en-CA"\nexport const locale: Locale = ca\nexport const weekStartsOn = 1\nexport const dateFormat = ""\n')
+    expect(m).toMatchObject({ localeTag: "en-CA", locale: "ca", weekStartsOn: 1, dateFormat: "" })
+    expect([...m.imports]).toEqual(["ca", "fr"])
+    expect(readSystemSettings("**Client settings** — locale `en-CA` · week starts Monday · typed date format `YYYY-MM-DD` (displayed dates: 14 Nov 2026)."))
+      .toEqual({ localeTag: "en-CA", weekStartsOn: 1, dateFormat: "YYYY-MM-DD" })
+  })
+
+  it("compares with the System section's Client settings when --system is given", () => {
+    const dir = repo()
+    const same = validate(dir, { system: sys("**Client settings** — locale `en-US` · week starts Monday · date format `DD/MM/YYYY`.") })
+    expect(at(same.warnings).filter((f) => f.startsWith("src/lib/locale.ts"))).toEqual([])
+    const differ = validate(dir, { system: sys("**Client settings** — locale `en-CA` · week starts Sunday · date format `DD/MM/YYYY`.") })
+    expect(differ.errors).toEqual([])
+    expect(at(differ.warnings)).toEqual(expect.arrayContaining(["src/lib/locale.ts › localeTag", "src/lib/locale.ts › weekStartsOn"]))
+    expect(differ.warnings.find((w) => w.field.endsWith("weekStartsOn")).message).toMatch(/Monday; the System section records Sunday/)
+  })
+
+  it("notes the comparison was skipped without --system", () => {
+    expect(validate(repo()).notes.join("\n")).toMatch(/not compared with the System section/)
+  })
+})
+
 describe("ds-validate: helpers and CLI", () => {
   it("knows date formats, locales and versions", () => {
     expect(["", "DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD", "D.M.YY"].every(isDateFormat)).toBe(true)
@@ -235,10 +279,10 @@ describe("ds-validate: helpers and CLI", () => {
   })
 
   it("exits 1 and names the field when something is wrong", () => {
-    const dir = repo({ config: { ...goodConfig(), settings: { locale: "en-US", weekStartsOn: 9, dateFormat: "" } } })
+    const dir = repo({ files: { "src/lib/locale.ts": localeModule({ week: 9 }) } })
     const run = spawnSync(process.execPath, [SCRIPT, "--repo", dir], { encoding: "utf8" })
     expect(run.status).toBe(1)
-    expect(run.stdout).toMatch(/error {4}settings\.weekStartsOn is 9 — a number 0–6/)
+    expect(run.stdout).toMatch(/error {4}src\/lib\/locale\.ts › weekStartsOn is 9 — a number 0–6/)
   })
 
   it("exits 0 on a valid repo", () => {
@@ -255,16 +299,15 @@ describe("ds-validate: --template", () => {
   }
 
   it("accepts {{…}} placeholders where Setup fills a value, and lists them", () => {
-    const config = { ...goodConfig(), designSystem: "{{DESIGN_SYSTEM_URL}}", namespace: "{{CLIENT_NAMESPACE}}",
-      settings: { locale: "{{LOCALE}}", weekStartsOn: "{{WEEK_STARTS_ON}}", dateFormat: "{{DATE_FORMAT}}" } }
+    const config = { ...goodConfig(), designSystem: "{{DESIGN_SYSTEM_URL}}", namespace: "{{CLIENT_NAMESPACE}}" }
     const r = validateTemplate(...write(config))
     expect(r.errors).toEqual([])
-    expect(r.warnings[0].fix).toMatch(/\{\{LOCALE\}\}/)
+    expect(r.warnings[0].fix).toMatch(/\{\{DESIGN_SYSTEM_URL\}\}/)
   })
 
   it("still checks every non-placeholder value", () => {
-    const r = validateTemplate(...write({ ...goodConfig(), typeClassPrefix: "type", settings: { locale: "{{LOCALE}}", weekStartsOn: 9, dateFormat: "" } }))
-    expect(r.errors.map((e) => e.field)).toEqual(expect.arrayContaining(["typeClassPrefix", "settings.weekStartsOn"]))
+    const r = validateTemplate(...write({ ...goodConfig(), typeClassPrefix: "type", namespace: "{{NAMESPACE}}", tracker: "not a url" }))
+    expect(r.errors.map((e) => e.field)).toEqual(expect.arrayContaining(["typeClassPrefix", "tracker"]))
   })
 
   it("requires the template's kitVersion to match the scripts", () => {

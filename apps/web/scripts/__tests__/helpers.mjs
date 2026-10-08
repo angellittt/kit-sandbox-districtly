@@ -1,4 +1,4 @@
-// design-system-kit 0.4.1 · profile shadcn · harness: script-test helpers
+// design-system-kit 0.5.0 · profile shadcn · harness: script-test helpers
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
@@ -36,7 +36,6 @@ export const goodConfig = () => ({
   tokensOut: "src/styles/ds-tokens.css",
   lastSynced: "2026-10-07T18:00:00Z",
   typeClassPrefix: "type-",
-  settings: { locale: "en-US", weekStartsOn: 1, dateFormat: "DD/MM/YYYY" },
   namespace: "Probe",
   bundleExtras: { sonner: ["toast"] },
   componentFiles: { Button: ["button.tsx"] },
@@ -44,7 +43,11 @@ export const goodConfig = () => ({
   usingInCode: { notes: [] },
 })
 
-/** A minimal repo on disk: config, snapshot, components.json, tsconfig, global CSS. */
+/** The app's locale module, as Setup seeds it. */
+export const localeModule = ({ tag = "en-US", name = "enUS", week = 1, format = "DD/MM/YYYY" } = {}) =>
+  `import { ${name} } from "date-fns/locale"\nimport type { Locale } from "date-fns"\nexport const localeTag = "${tag}"\nexport const locale: Locale = ${name}\nexport const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = ${week}\nexport const dateFormat: string = "${format}"\n`
+
+/** A minimal repo on disk: config, snapshot, components.json, tsconfig, global CSS, locale module. */
 export function repo({ config = goodConfig(), tokens = snapshot(), css = '@import "tailwindcss";\n@source "../";\n', files = {} } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ds-script-test-"))
   const write = (p, text) => {
@@ -53,10 +56,11 @@ export function repo({ config = goodConfig(), tokens = snapshot(), css = '@impor
   }
   write(".ttt/design-system.json", config)
   write(".ttt/tokens.json", tokens)
-  write("components.json", { tailwind: { css: "src/app/globals.css" }, aliases: { ui: "@/components/ui" } })
+  write("components.json", { tailwind: { css: "src/app/globals.css" }, aliases: { ui: "@/components/ui", lib: "@/lib" } })
   write("tsconfig.json", '{\n  // comments are allowed\n  "compilerOptions": { "paths": { "@/*": ["./src/*"] } }\n}\n')
   write("src/app/globals.css", css)
   write("src/components/ui/button.tsx", "export function Button() { return null }\n")
+  write("src/lib/locale.ts", localeModule())
   for (const [p, text] of Object.entries(files)) write(p, text)
   return dir
 }

@@ -4,16 +4,11 @@
   "schema": "ttt-ds/1",
   "profile": "shadcn",
   "framework": "vite",
-  "kitVersion": "0.4.1",
+  "kitVersion": "0.5.0",
   "tokensIn": ".ttt/tokens.json",
   "tokensOut": "src/styles/ds-tokens.css",
   "lastSynced": "2026-10-08T02:28:06Z",
   "typeClassPrefix": "type-",
-  "settings": {
-    "locale": "en-CA",
-    "weekStartsOn": 1,
-    "dateFormat": "YYYY-MM-DD"
-  },
   "namespace": "Districtly",
   "bundleExtras": {
     "sonner": [

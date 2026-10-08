@@ -1,7 +1,7 @@
 # Design system
 
 <!-- Written by the design-system Setup skill and kept current by Sync.
-     Schema ttt-ds/1 · profile shadcn · kit 0.4.1. Other repo docs
+     Schema ttt-ds/1 · profile shadcn · kit 0.5.0. Other repo docs
      point here rather than repeating any of it. -->
 
 **Districtly is the source of truth; shadcn is the scaffolding.** The look
@@ -14,7 +14,7 @@ preview, fix the port — don't adjust the CSS to taste.
   `project/components/`.
 - **Tracker** https://app.clickup.com/8593845/v/f/90119323306/90115204389
 - **Connection** `.ttt/design-system.json` (links, schema, profile, kit
-  version, paths, settings, `lastSynced`).
+  version, paths, `lastSynced`).
 
 ## Usage rules
 
@@ -81,21 +81,26 @@ Custom UI uses **only** the Tailwind names from the mapping:
 
 `eslint .` runs the accessibility rules (jsx-a11y) on every file.
 
-## Client settings
+## Locale defaults
 
-Locale, week start and date format are **not tokens**. They live in
-`.ttt/design-system.json` under `settings` (Districtly: `en-CA`,
-weeks start on Monday, typed dates as `YYYY-MM-DD` (displayed dates follow the brand voice: 14 Nov 2026)) and are read in
-exactly one place, `@/lib/ds-settings`:
+Locale, week start and date format are **not tokens**: they're product
+decisions, and the app owns them in `@/lib/locale` (Districtly:
+`en-CA`, weeks start on Monday, typed dates as `YYYY-MM-DD` (displayed dates follow the brand voice: 14 Nov 2026)).
+Change them there, in a PR, like any other code.
 
 ```ts
-import { dsLocale, dsWeekStartsOn, dsDateFormat } from "@/lib/ds-settings";
+import { locale, localeTag, weekStartsOn, dateFormat } from "@/lib/locale";
 ```
 
-`DatePicker` and `Calendar` default to those; pass `locale` or `weekStartsOn`
-to override one instance. **Don't import a date-fns locale in a component.**
-A new locale goes in the `LOCALES` registry in `ds-settings.ts` — importing
-them all would put every locale in the bundle.
+`DatePicker` and `Calendar` default to those; pass `locale`, `weekStartsOn`
+or `dateFormat` to override one instance (a user's preference, a second
+language). **Don't import a date-fns locale in a component** — import only the
+locale you use, in `locale.ts`; importing them all would put every locale in
+the bundle. Keep the exports plain literals: the kit's scripts read them.
+
+The design system's System section records the same decision.
+`npm run ds:validate -- --system <01-system.md>` warns when the two differ;
+fix whichever side is out of date.
 
 ## Component rules
 
@@ -180,7 +185,7 @@ are agreed in review but not yet in code — don't import them.
 
 ## Publish-back tooling
 
-Seven scripts, all **kit files** (design-system-kit 0.4.1) —
+Seven scripts, all **kit files** (design-system-kit 0.5.0) —
 generic across repos on profile `shadcn`. Fix them in the kit, not here, so
 the fix carries:
 

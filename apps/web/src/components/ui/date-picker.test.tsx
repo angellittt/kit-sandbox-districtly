@@ -1,4 +1,4 @@
-// design-system-kit 0.4.1 · profile shadcn · kit extension test
+// design-system-kit 0.5.0 · profile shadcn · kit extension test
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -12,18 +12,17 @@ import {
 } from "@/components/ui/date-picker";
 
 /**
- * Settings fixture: the component reads client settings through
- * `@/lib/ds-settings`, which reads the repo config. Mock it so the tests do
- * not depend on any repo's `.ttt/design-system.json`: en-US, weeks start on
- * Sunday, no dateFormat override.
+ * Locale fixture: the component defaults to the app's locale module
+ * (`@/lib/locale`). Mock it so the tests don't depend on any app's choices:
+ * en-US, weeks start on Sunday, no dateFormat override.
  */
-vi.mock("@/lib/ds-settings", async () => {
+vi.mock("@/lib/locale", async () => {
   const { enUS } = await import("date-fns/locale");
   return {
-    dsLocale: enUS,
-    dsLocaleTag: "en-US",
-    dsWeekStartsOn: 0,
-    dsDateFormat: "",
+    locale: enUS,
+    localeTag: "en-US",
+    weekStartsOn: 0,
+    dateFormat: "",
   };
 });
 

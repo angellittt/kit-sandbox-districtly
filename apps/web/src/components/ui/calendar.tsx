@@ -1,9 +1,9 @@
-// design-system-kit 0.4.1 · profile shadcn · stock component (base-nova + baseline only)
+// design-system-kit 0.5.0 · profile shadcn · stock component (base-nova + baseline only)
 "use client";
 
 /**
  * Stock base-nova (shadcn 4.21.1, 2026-10-07) + TTT baseline:
- * - `locale` defaults to `dsLocale` and new `weekStartsOn` defaults to `dsWeekStartsOn` (client settings, `@/lib/ds-settings`).
+ * - `locale` defaults to `appLocale` and new `weekStartsOn` defaults to `appWeekStartsOn` (the app's locale defaults, `@/lib/locale`).
  * - Focused day: `group-data-[focused=true]/day:border-ring ring-[3px] ring-ring/50` removed; the day is a Button and takes the global focus rule (two rings otherwise).
  * - Disabled days: `text-muted-foreground opacity-50` -> `text-label-disable opacity-100` (disabled label role).
  */
@@ -18,7 +18,10 @@ import {
 } from "react-day-picker";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { dsLocale, dsWeekStartsOn } from "@/lib/ds-settings";
+import {
+  locale as appLocale,
+  weekStartsOn as appWeekStartsOn,
+} from "@/lib/locale";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -31,8 +34,8 @@ function Calendar({
   showOutsideDays = true,
   captionLayout = "label",
   buttonVariant = "ghost",
-  locale = dsLocale,
-  weekStartsOn = dsWeekStartsOn,
+  locale = appLocale,
+  weekStartsOn = appWeekStartsOn,
   formatters,
   components,
   ...props
