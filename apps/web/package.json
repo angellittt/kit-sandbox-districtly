@@ -12,10 +12,12 @@
     "lint:fix": "oxlint --fix; ox=$?; eslint . --fix && exit $ox"
   },
   "dependencies": {
+    "@tailwindcss/vite": "4.3.3",
     "@tanstack/react-query": "^5.95.2",
     "axios": "^1.18.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tailwindcss": "4.3.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import svgr from "vite-plugin-svgr";
@@ -8,7 +9,7 @@ export default defineConfig({
   // svgr() lets `import Icon from "./icon.svg?react"` yield a React
   // component instead of a URL string - see
   // src/assets/icons/__tests__/example.test.tsx for a working example.
-  plugins: [react(), tsconfigPaths(), svgr()],
+  plugins: [react(), tailwindcss(), tsconfigPaths(), svgr()],
   server: {
     watch: {
       usePolling: true,
