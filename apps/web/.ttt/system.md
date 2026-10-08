@@ -4,7 +4,7 @@ How Districtly is set up. The rules every TTT design system follows live in the 
 
 | | |
 |---|---|
-| **Versions** | schema `ttt-ds/1` · profile `shadcn` 1.3 · kit 0.4.1 |
+| **Versions** | schema `ttt-ds/1` · profile `shadcn` 1.7 · kit 0.8.0 |
 | **Owner** | angelli.dimatulac@ttt.studio |
 | **Code** | `https://github.com/angellittt/kit-sandbox-districtly (apps/web)` · config `.ttt/design-system.json` |
 | **Figma** | [Districtly — Design System](https://www.figma.com/design/8d21KnCRPlXMbLlbTCsKGN) · key `8d21KnCRPlXMbLlbTCsKGN` |
@@ -17,6 +17,6 @@ How Districtly is set up. The rules every TTT design system follows live in the 
 
 - `brand-secondary` is a lightened Civic Ink (`#384766`); Civic Ink itself (`#14213D`) is darker than any ramp step.
 - Ochre Signal `#F5A623` is both the brand accent and the cautionary status colour.
-- Code: a Vite app in a pnpm monorepo (`apps/web`); global CSS at `src/config/global.css`; fonts loaded by `src/styles/fonts.css` (Fontsource 5.3.0 woff2, latin and latin-ext).
+- Code: a Vite app in a pnpm monorepo (`apps/web`); global CSS at `src/config/global.css`; fonts loaded by `src/styles/fonts.css` from the `@fontsource-variable/public-sans` and `@fontsource-variable/source-sans-3` packages (5.3.0).
 
 **Open deviations** — none.
