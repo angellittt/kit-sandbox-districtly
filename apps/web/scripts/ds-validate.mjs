@@ -71,7 +71,7 @@ export const SHADCN_MAP = {
   "sidebar-foreground": "label-normal",
   "sidebar-primary": "primary-normal",
   "sidebar-primary-foreground": "on-primary",
-  "sidebar-accent": "background-elevated",
+  "sidebar-accent": "fill-normal",
   "sidebar-accent-foreground": "label-normal",
   "sidebar-border": "line-normal",
   "sidebar-ring": "focus-ring",
