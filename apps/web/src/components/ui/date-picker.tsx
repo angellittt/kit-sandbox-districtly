@@ -1,4 +1,4 @@
-// design-system-kit 0.8.1 · profile shadcn · kit extension (replaces the stock file when chosen)
+// design-system-kit 0.10.0 · profile shadcn · kit extension (replaces the stock file when chosen)
 "use client";
 
 import * as React from "react";

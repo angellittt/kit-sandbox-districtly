@@ -1,4 +1,4 @@
-// design-system-kit 0.8.1 · profile shadcn · stock component (base-nova + baseline only)
+// design-system-kit 0.10.0 · profile shadcn · stock component (base-nova + baseline only)
 /**
  * Stock base-nova (shadcn 4.21.1, 2026-10-07) + TTT baseline:
  * - Sidebar (mobile): SheetContent gets data-[side=left|right]:w-(--sidebar-width) so SIDEBAR_WIDTH_MOBILE beats Sheet's data-[side]:w-3/4.

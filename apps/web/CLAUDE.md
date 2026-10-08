@@ -77,7 +77,7 @@ agreed but not in code yet — don't import them.
   plugin or PostCSS config.
 - **`data-slot` stays on the element its classes are applied to** — the styling
   maps read the TSX.
-- `@tanstack/react-table` stays on v8.
+- `@tanstack/react-table` stays on v8 (DataTable); v9 drops `useReactTable`.
 
 ## Tooling
 

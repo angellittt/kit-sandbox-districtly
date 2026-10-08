@@ -1,4 +1,4 @@
-// design-system-kit 0.8.0 · profile shadcn · stock component (base-nova + baseline only)
+// design-system-kit 0.10.0 · profile shadcn · stock component (base-nova + baseline only)
 /**
  * Stock base-nova (shadcn 4.21.1, 2026-10-07) + TTT baseline:
  * - Radius role (D1): item, sub-trigger, checkbox and radio items `rounded-md` -> `rounded-inset` (nested in the `rounded-lg` `p-1` popup).
