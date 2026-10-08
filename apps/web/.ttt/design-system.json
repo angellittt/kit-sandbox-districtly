@@ -1,5 +1,5 @@
 {
-  "designSystem": "{{DESIGN_SYSTEM_URL}}",
+  "designSystem": "https://claude.ai/artifact/UQLUACiuG2Mcy4NJHxQ5qu",
   "tracker": "https://app.clickup.com/8593845/v/f/90119323306/90115204389",
   "schema": "ttt-ds/1",
   "profile": "shadcn",
@@ -12,7 +12,7 @@
   "settings": {
     "locale": "en-CA",
     "weekStartsOn": 1,
-    "dateFormat": "D MMM YYYY"
+    "dateFormat": "YYYY-MM-DD"
   },
   "namespace": "Districtly",
   "bundleExtras": {

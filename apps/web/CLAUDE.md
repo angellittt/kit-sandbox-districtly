@@ -8,7 +8,7 @@
 comes from the design system. If a component renders differently from its
 preview, fix the port — don't adjust the CSS to taste.
 
-- **Design system** {{DESIGN_SYSTEM_URL}} — brand rules in `project/README.md`,
+- **Design system** https://claude.ai/artifact/UQLUACiuG2Mcy4NJHxQ5qu — brand rules in `project/README.md`,
   setup summary in `project/01-system.md`, the Tailwind names in
   `project/02-using-in-code.md`, per-component docs and previews under
   `project/components/`.
@@ -85,7 +85,7 @@ Custom UI uses **only** the Tailwind names from the mapping:
 
 Locale, week start and date format are **not tokens**. They live in
 `.ttt/design-system.json` under `settings` (Districtly: `en-CA`,
-weeks start on Monday, dates written as `D MMM YYYY` (14 Nov 2026)) and are read in
+weeks start on Monday, typed dates as `YYYY-MM-DD` (displayed dates follow the brand voice: 14 Nov 2026)) and are read in
 exactly one place, `@/lib/ds-settings`:
 
 ```ts
