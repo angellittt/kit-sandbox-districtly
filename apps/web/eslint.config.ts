@@ -1,6 +1,6 @@
 import reactEslintConfig from "@repo/eslint-config/eslint.react.config";
 import { disableRulesCoveredByOxlint } from "@repo/eslint-config/oxlint";
-import { defineConfig } from "eslint/config";
+import { defineConfig, globalIgnores } from "eslint/config";
 import type { Linter } from "eslint";
 import { builtinRules } from "eslint/use-at-your-own-risk";
 
@@ -75,6 +75,9 @@ const withDesignSystem = (entries: Linter.Config[]): Linter.Config[] => [
 
 export default defineConfig(
   withDesignSystem([
+    // Flat config doesn't read .gitignore. Vitest rewrites coverage/ and turbo
+    // writes .turbo/ while lint runs alongside them, so walking either can race.
+    globalIgnores(["coverage", ".turbo"]),
     ...reactEslintConfig,
     {
       rules: {
