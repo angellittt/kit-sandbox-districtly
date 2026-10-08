@@ -4,7 +4,7 @@
   "schema": "ttt-ds/1",
   "profile": "shadcn",
   "framework": "vite",
-  "kitVersion": "0.8.0",
+  "kitVersion": "0.8.1",
   "tokensIn": ".ttt/tokens.json",
   "tokensOut": "src/styles/ds-tokens.css",
   "systemIn": ".ttt/system.md",

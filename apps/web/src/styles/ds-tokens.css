@@ -280,7 +280,7 @@
   --sidebar-foreground: var(--label-normal);
   --sidebar-primary: var(--primary-normal);
   --sidebar-primary-foreground: var(--on-primary);
-  --sidebar-accent: var(--background-elevated);
+  --sidebar-accent: var(--fill-normal);
   --sidebar-accent-foreground: var(--label-normal);
   --sidebar-border: var(--line-normal);
   --sidebar-ring: var(--focus-ring);

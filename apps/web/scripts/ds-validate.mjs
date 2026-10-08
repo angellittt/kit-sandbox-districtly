@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// design-system-kit 0.8.0 · profile shadcn · kit file — fix it in the kit, not per client
+// design-system-kit 0.8.1 · profile shadcn · kit file — fix it in the kit, not per client
 /**
  * ds-validate.mjs — the contract's config validation.
  *
@@ -36,7 +36,7 @@ import { join, resolve, dirname, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 
 /** The kit these scripts belong to. A repo may not claim a newer one. */
-export const KIT_VERSION = "0.8.0"
+export const KIT_VERSION = "0.8.1"
 const SCHEMA = "ttt-ds/1"
 const PROFILE = "shadcn"
 
@@ -71,7 +71,7 @@ export const SHADCN_MAP = {
   "sidebar-foreground": "label-normal",
   "sidebar-primary": "primary-normal",
   "sidebar-primary-foreground": "on-primary",
-  "sidebar-accent": "background-elevated",
+  "sidebar-accent": "fill-normal",
   "sidebar-accent-foreground": "label-normal",
   "sidebar-border": "line-normal",
   "sidebar-ring": "focus-ring",
