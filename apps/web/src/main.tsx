@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@/config/global.css";
 // Registers the global Zod error map - must run before any schema is used.
 import "@/lib/zod-error-map";
+import { ThemeProvider } from "@/components/theme-provider";
 import App from "./App.tsx";
 
 const rootElement = document.getElementById("root");
@@ -11,6 +12,8 @@ if (!rootElement) {
 }
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 );

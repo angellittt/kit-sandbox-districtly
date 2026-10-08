@@ -1,0 +1,17 @@
+/* design-system-kit 0.8.0 · profile shadcn · wiring (Vite): fonts
+ *
+ * Districtly's two families come from Fontsource packages (no font files in
+ * the repo): Public Sans for display, Source Sans 3 for body. Mono stays on
+ * the system stack. Unlayered on purpose: this :root beats the token file's
+ * own @theme declaration, so these families win and the fallback stacks
+ * follow them. Imported in the global CSS right after the token file.
+ */
+@import "@fontsource-variable/public-sans/wght.css";
+@import "@fontsource-variable/public-sans/wght-italic.css";
+@import "@fontsource-variable/source-sans-3/wght.css";
+@import "@fontsource-variable/source-sans-3/wght-italic.css";
+
+:root {
+  --font-display: "Public Sans Variable";
+  --font-sans: "Source Sans 3 Variable";
+}

@@ -1,0 +1,40 @@
+{
+  "designSystem": "https://claude.ai/artifact/UQLUACiuG2Mcy4NJHxQ5qu",
+  "tracker": "https://app.clickup.com/8593845/v/f/90119323306/90115204389",
+  "schema": "ttt-ds/1",
+  "profile": "shadcn",
+  "framework": "vite",
+  "kitVersion": "0.8.0",
+  "tokensIn": ".ttt/tokens.json",
+  "tokensOut": "src/styles/ds-tokens.css",
+  "systemIn": ".ttt/system.md",
+  "lastSynced": "2026-10-08T02:28:06Z",
+  "typeClassPrefix": "type-",
+  "namespace": "Districtly",
+  "bundleExtras": {
+    "sonner": [
+      "toast"
+    ]
+  },
+  "componentFiles": {
+    "DatePicker": [
+      "date-picker.tsx",
+      "calendar.tsx"
+    ],
+    "Input": [
+      "input.tsx",
+      "label.tsx"
+    ]
+  },
+  "contrast": {
+    "intentional": [
+      {
+        "foreground": "label-disable",
+        "reason": "disabled text is intentionally below 4.5:1 and always paired with a disabled control"
+      }
+    ]
+  },
+  "usingInCode": {
+    "notes": []
+  }
+}

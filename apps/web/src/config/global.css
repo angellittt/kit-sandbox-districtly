@@ -1,3 +1,14 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+/* Design-system tokens — GENERATED from .ttt/tokens.json by scripts/ds-tokens.mjs
+ * (every token, the shadcn variables, the Tailwind @theme mapping and the type
+ * classes; never edit by hand). Fonts come after them, unlayered. */
+@import "../styles/ds-tokens.css";
+@import "../styles/fonts.css";
+
 *,
 *::before,
 *::after {
@@ -71,4 +82,29 @@ h6 {
   position: absolute;
   white-space: nowrap;
   width: 1px;
+}
+
+/* design-system-kit 0.8.0 · theme block (replaces shadcn's theme variables) */
+/* Automatic source detection walks up from this file and can miss the
+ * source directory (or scan markdown). Declare the scan root explicitly. */
+@source "../";
+
+/* Themes key on [data-theme] (next-themes, attribute="data-theme"), not a
+ * .dark class, because that is what the generated token file emits. */
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* design-system-kit focus rule: one 2px ring, 2px offset, on every control. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
